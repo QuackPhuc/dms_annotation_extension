@@ -337,6 +337,7 @@
       .nl-bulk-dialog .nl-scope label { display: flex; gap: 7px; align-items: flex-start; font-size: 12px; }
       .nl-bulk-dialog .nl-scope label[hidden] { display: none !important; }
       .nl-bulk-dialog .nl-mask-only[hidden] { display: none !important; }
+      .nl-bulk-dialog [hidden] { display: none !important; }
       .nl-bulk-dialog .nl-count {
         box-sizing: border-box;
         width: 100%;
