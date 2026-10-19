@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.5.6";
+  const VERSION = "1.5.7";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";
@@ -68,6 +68,7 @@
     eyeBulkDirection: "after",
     lastCreatedBox: null,
     bboxMode: null,
+    bboxCreateDraft: null,
     bboxDeleteRegion: null,
     renderingSidebar: false,
     sidebarScope: null,
@@ -1675,14 +1676,30 @@
       (event.clientX - rect.left) * canvas.width / rect.width,
       (event.clientY - rect.top) * canvas.height / rect.height
     ];
-    const sourcePoint = [
-      Math.max(0, Math.min(sourceWidth, (event.clientX - rect.left) * sourceWidth / rect.width)),
-      Math.max(0, Math.min(sourceHeight, (event.clientY - rect.top) * sourceHeight / rect.height))
+    const rawSourcePoint = [
+      (event.clientX - rect.left) * sourceWidth / rect.width,
+      (event.clientY - rect.top) * sourceHeight / rect.height
     ];
-    return { canvas, rect, canvasPoint, sourcePoint, sourceWidth, sourceHeight };
+    const sourcePoint = [
+      Math.max(0, Math.min(sourceWidth, rawSourcePoint[0])),
+      Math.max(0, Math.min(sourceHeight, rawSourcePoint[1]))
+    ];
+    return { canvas, rect, canvasPoint, rawSourcePoint, sourcePoint, sourceWidth, sourceHeight };
+  }
+
+  function discardBboxCreateDraft() {
+    const draft = state.bboxCreateDraft;
+    state.bboxCreateDraft = null;
+    if (!draft || typeof ED === "undefined" || !Array.isArray(ED.items)) return;
+    const index = ED.items.indexOf(draft.item);
+    if (index >= 0) ED.items.splice(index, 1);
+    if (ED.drag?.create && ED.drag.n === index) ED.drag = null;
+    if (ED.sel === index) ED.sel = -1;
+    ED.selSet?.delete(index);
   }
 
   function cancelBboxMode() {
+    discardBboxCreateDraft();
     state.bboxMode = null;
     state.bboxDeleteRegion = null;
     try {
@@ -1702,6 +1719,7 @@
       cancelBboxMode();
       return;
     }
+    if (state.bboxMode) cancelBboxMode();
     state.bboxMode = mode;
     state.bboxDeleteRegion = null;
     if (typeof ED !== "undefined") {
@@ -1714,8 +1732,60 @@
     if (canvas) canvas.style.cursor = "crosshair";
     if (typeof edRepaint === "function") edRepaint();
     notify(mode === "create"
-      ? "Tạo box: kéo chuột trái trên ảnh"
+      ? "Tạo box: click góc đầu, di chuyển chuột rồi click góc đối diện"
       : "Xóa box: chấm polygon rồi click điểm đầu hoặc chuột phải · Esc để thoát");
+  }
+
+  function updateBboxCreateDraft(event) {
+    const draft = state.bboxCreateDraft;
+    if (!draft || !bboxEditingAvailable() || draft.generation !== S.gen || draft.key !== ED.key ||
+        draft.label !== S.labelSel || !ED.items?.includes(draft.item)) return false;
+    const point = bboxEventPoint(event);
+    const [x0, y0] = draft.startSource;
+    const [x1, y1] = point.rawSourcePoint;
+    draft.currentSource = [x1, y1];
+    draft.currentCanvas = point.canvasPoint.slice();
+    draft.item.box = [Math.min(x0, x1), Math.min(y0, y1), Math.max(x0, x1), Math.max(y0, y1)];
+    ED.mouse = point.canvasPoint.slice();
+    if (typeof edRepaint === "function") edRepaint();
+    return true;
+  }
+
+  function finishBboxCreateDraft(event) {
+    const draft = state.bboxCreateDraft;
+    if (!draft || !updateBboxCreateDraft(event)) return false;
+    const widthOnCanvas = Math.abs(draft.currentCanvas[0] - draft.startCanvas[0]);
+    const heightOnCanvas = Math.abs(draft.currentCanvas[1] - draft.startCanvas[1]);
+    if (widthOnCanvas < 4 || heightOnCanvas < 4) {
+      notify("Box quá nhỏ · di chuyển chuột xa hơn rồi click lại");
+      return true;
+    }
+    const width = Number(S.sess?.src_w) || 0;
+    const height = Number(S.sess?.src_h) || 0;
+    const [x1, y1, x2, y2] = draft.item.box;
+    draft.item.box = [
+      Math.max(0, Math.min(width, x1)),
+      Math.max(0, Math.min(height, y1)),
+      Math.max(0, Math.min(width, x2)),
+      Math.max(0, Math.min(height, y2))
+    ];
+    state.lastCreatedBox = {
+      generation: S.gen,
+      key: ED.key,
+      label: S.labelSel,
+      item: draft.item
+    };
+    state.bboxCreateDraft = null;
+    state.bboxMode = null;
+    ED.drag = null;
+    ED.marq = null;
+    const canvas = document.getElementById("view");
+    if (canvas) canvas.style.cursor = "";
+    try { if (typeof lsTouch === "function") lsTouch(); } catch (_) {}
+    if (typeof edSave === "function") edSave();
+    if (typeof edRepaint === "function") edRepaint();
+    notify("Đã tạo box mới · Ctrl+B để sao chép box này");
+    return true;
   }
 
   function bboxDeleteTarget(event) {
@@ -1783,8 +1853,11 @@
     if (state.bboxMode === "create") {
       event.preventDefault();
       event.stopImmediatePropagation();
+      if (state.bboxCreateDraft) {
+        finishBboxCreateDraft(event);
+        return;
+      }
       try { if (typeof pause === "function") pause(); } catch (_) {}
-      try { if (typeof lsTouch === "function") lsTouch(); } catch (_) {}
       const point = bboxEventPoint(event);
       const item = { box: [point.sourcePoint[0], point.sourcePoint[1], point.sourcePoint[0], point.sourcePoint[1]] };
       if (OBJECT_BBOX_LABELS.has(S.labelSel)) item.cls = S.labelSel;
@@ -1792,14 +1865,26 @@
       if (typeof edClearSel === "function") edClearSel();
       else { ED.sel = -1; ED.selSet?.clear(); }
       ED.sel = ED.items.length - 1;
-      ED.drag = { n: ED.sel, corner: 3, p0: point.canvasPoint, box0: item.box.slice(), moved: false, create: true };
+      ED.drag = null;
+      ED.marq = null;
+      state.bboxCreateDraft = {
+        generation: S.gen,
+        key: ED.key,
+        label: S.labelSel,
+        item,
+        startSource: point.sourcePoint.slice(),
+        currentSource: point.sourcePoint.slice(),
+        startCanvas: point.canvasPoint.slice(),
+        currentCanvas: point.canvasPoint.slice()
+      };
       if (typeof edRepaint === "function") edRepaint();
+      notify("Đã đặt góc đầu · di chuyển chuột rồi click để hoàn tất box");
       return;
     }
     if (event.shiftKey) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      notify("Nhấn N rồi kéo chuột trái để tạo box mới");
+      notify("Nhấn N, click góc đầu rồi click góc đối diện để tạo box mới");
     }
   }
 
@@ -1824,6 +1909,14 @@
 
   function onBboxMouseMove(event) {
     if (!bboxLabelingReady()) return;
+    if (state.bboxMode === "create" && state.bboxCreateDraft) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      updateBboxCreateDraft(event);
+      const canvas = document.getElementById("view");
+      if (canvas) canvas.style.cursor = "crosshair";
+      return;
+    }
     if (state.bboxMode === "delete" && bboxEditingAvailable() && bboxDeleteTarget(event)) {
       const point = bboxEventPoint(event);
       ED.mouse = point.canvasPoint.map((value, index) => index ?
@@ -1874,7 +1967,12 @@
     ctx.restore();
   }
 
-  function onBboxMouseUp() {
+  function onBboxMouseUp(event) {
+    if (state.bboxMode === "create" && state.bboxCreateDraft) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
     // Match CVAT: while dragging, let the box follow the pointer outside the
     // image. On release, crop the outside portion at the nearest image edge,
     // then let the native editor save the resulting smaller box.

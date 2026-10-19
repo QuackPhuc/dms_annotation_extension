@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.7 - 2026-10-19
+
+- Đổi thao tác tạo bbox: nhấn `N`, click góc đầu, di chuyển chuột không cần giữ nút rồi click góc đối diện để hoàn tất.
+- `Esc` hủy box đang tạo trước lần click thứ hai.
+
 ## 1.5.6 - 2026-10-19
 
 - Thêm nút **Kiểm tra update** trong popup.

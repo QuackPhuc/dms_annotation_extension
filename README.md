@@ -2,7 +2,7 @@
 
 Chrome extension hỗ trợ sắp xếp frame theo clip và thao tác nhãn nhanh trên DMS Labeling.
 
-Phiên bản hiện tại: **1.5.6**
+Phiên bản hiện tại: **1.5.7**
 
 [Tải bản mới nhất](https://github.com/tanmainhat0502/dms_annotation_extension/releases/latest)
 
@@ -12,7 +12,7 @@ Phiên bản hiện tại: **1.5.6**
 - Di chuyển đúng thứ tự bằng `A`, `D`, `Shift+A`, `Shift+D` và `Space`.
 - Đổi trạng thái toàn bộ clip giữa **Done**, **Not checked** và **In progress**.
 - Sao chép hàng loạt bằng `Ctrl+B` cho seatbelt, eye 15pt, bbox, face 7pt và các loại nhãn còn lại.
-- Tạo bbox bằng `N`; vẽ vùng xóa bằng `M`.
+- Tạo bbox bằng `N` với hai lần click, không cần giữ chuột; vẽ vùng xóa bằng `M`.
 - Khi kéo bbox vượt biên ảnh, phần ngoài ảnh được cắt tại mép khi thả chuột giống CVAT.
 - Chỉnh eye 15pt theo cả cụm: di chuyển, xoay và co giãn.
 - Ẩn/hiện nhãn bằng `K` khi cần quan sát ảnh rõ hơn.

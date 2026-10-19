@@ -1,6 +1,6 @@
 # NOTA Labeling Organizer
 
-Phiên bản hiện tại: **1.5.6**.
+Phiên bản hiện tại: **1.5.7**.
 
 Popup có nút **Kiểm tra update**. Với bản cài từ Chrome Web Store, nút yêu cầu Chrome kiểm tra và cài bản Store mới. Với bản `Load unpacked`, nút kiểm tra GitHub Release và mở đúng gói mới nếu có; Chrome trên Windows không cho extension unpacked tự thay mã nguồn của chính nó.
 
@@ -26,7 +26,7 @@ Extension này hỗ trợ seatbelt và eye 15pt trên màn hình **Labeling** c�
 - **K** ẩn/hiện mask seatbelt hoặc eye 15pt ngay cả khi frame đang **In progress**. Thao tác này chỉ đổi hiển thị, không xóa dữ liệu và không đổi trạng thái frame.
 - Với eye 15pt, `Ctrl+B` sao chép mắt đang chọn hoặc tất cả mắt sang các frame trước/sau trong cùng clip; frame Done được bỏ qua và frame Not checked được chuyển sang In progress sau khi lưu.
 - Với body, head, face, nose, mouth, eye, hand, cigarette, e-cigarette, phone, can, bottle và mask, `Ctrl+B` có hai lựa chọn: **Chỉ box mới thêm** sẽ chồng box vừa tạo và giữ các box đang có ở frame đích; **Toàn bộ box hiện tại** sẽ thay toàn bộ danh sách box ở frame đích bằng dữ liệu của frame nguồn. Face 7pt sao chép toàn bộ cụm điểm hiện tại.
-- Với các label dạng bbox ở trên, nhấn `N` rồi kéo chuột trái để tạo box mới; `Shift + kéo` cũ đã được tắt. Nhấn `M` để vẽ vùng xóa màu đỏ giống seatbelt M: polygon có nền đỏ mờ và điểm đỏ, bấm chuột phải hoặc chạm lại điểm đầu để xóa mọi box nằm trong vùng, và vùng đỏ tiếp tục hiển thị cho đến khi nhấn `Esc`. Click trái một lần vào vùng trống chỉ bỏ chọn và không còn tạo các điểm nét đứt.
+- Với các label dạng bbox ở trên, nhấn `N`, click góc đầu, di chuyển chuột mà không cần giữ nút rồi click góc đối diện để tạo box mới; `Shift + kéo` cũ đã được tắt. Nhấn `M` để vẽ vùng xóa màu đỏ giống seatbelt M: polygon có nền đỏ mờ và điểm đỏ, bấm chuột phải hoặc chạm lại điểm đầu để xóa mọi box nằm trong vùng, và vùng đỏ tiếp tục hiển thị cho đến khi nhấn `Esc`. Click trái một lần vào vùng trống chỉ bỏ chọn và không còn tạo các điểm nét đứt.
 - Khi đang di chuyển hoặc co giãn bbox, box được phép đi theo chuột vượt ra ngoài ảnh như CVAT. Khi thả chuột, phần bbox nằm ngoài ảnh bị cắt tại mép trái, phải, trên hoặc dưới; các cạnh vẫn còn trong ảnh giữ nguyên vị trí nên kích thước box được tính lại và có thể nhỏ hơn.
 - Kéo vùng trống trong khung nét đứt để di chuyển cả 15 điểm; giữ `Ctrl` và kéo để xoay cả mắt quanh tâm. Kéo ô vuông trên cạnh/góc để co giãn cả cụm mắt; kéo trực tiếp một điểm vẫn chỉ sửa điểm đó.
 - Giữ khung nét đứt của SAM3 khi chuyển frame và quay lại. Frame chưa mở trong cùng clip dùng khung hiện tại; frame đã chỉnh khung riêng vẫn nhớ khung của nó. Khung không tự co lại theo đoạn mask nhỏ vừa thêm.
