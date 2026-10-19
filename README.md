@@ -2,7 +2,7 @@
 
 Chrome extension hỗ trợ sắp xếp frame theo clip và thao tác nhãn nhanh trên DMS Labeling.
 
-Phiên bản hiện tại: **1.6.2**
+Phiên bản hiện tại: **1.6.3**
 
 [Tải bản mới nhất](https://github.com/tanmainhat0502/dms_annotation_extension/releases/latest)
 
@@ -14,7 +14,7 @@ Phiên bản hiện tại: **1.6.2**
 - Sao chép hàng loạt bằng `Ctrl+B` cho seatbelt, eye 15pt, bbox, face 7pt và các loại nhãn còn lại.
 - Tạo bbox bằng `N` với hai lần click, không cần giữ chuột; vẽ vùng xóa bằng `M`.
 - Khi kéo bbox vượt biên ảnh, phần ngoài ảnh được cắt tại mép khi thả chuột giống CVAT.
-- Body/hand/eye box có thanh thao tác luôn hiện và có thể click trực tiếp: xóa nhanh, chép frame trước, clipboard, đánh dấu frame, xử lý hàng loạt và undo cả đợt.
+- Body/hand/eye box có bộ phím thao tác nhanh: `X` xóa mọi box, `1`/`2` xóa box trái/phải, `C` lấy toàn bộ box của frame vừa xem, cùng clipboard, đánh dấu, xử lý hàng loạt và hoàn tác.
 - Body cho phép double-click rồi kéo riêng một cạnh; `Ctrl+B` đặt cạnh đó vào đúng vị trí tuyệt đối của đường xanh trên mọi frame đích và giữ nguyên ba cạnh còn lại.
 - Chỉnh eye 15pt theo cả cụm: di chuyển, xoay và co giãn.
 - Ẩn/hiện nhãn bằng `K` khi cần quan sát ảnh rõ hơn.
@@ -39,7 +39,7 @@ Chrome không cho bản `Load unpacked` tự thay mã nguồn nếu chỉ dùng 
 
 Thiết lập một lần:
 
-1. Cài bản 1.6.2 vào một thư mục cố định bằng **Load unpacked**.
+1. Cài bản 1.6.3 vào một thư mục cố định bằng **Load unpacked**.
 2. Double-click `Install-NOTA-Updater.cmd` trong thư mục đó.
 3. Đóng và mở lại popup. Nút **Cài update một lần** sẽ biến mất khi updater sẵn sàng.
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.3 - 2026-10-19
+
+- Chuẩn hóa body/hand/eye box: `X` xóa toàn bộ bbox, `1`/`2` xóa box trái/phải; `Shift+X` xóa toàn bộ rồi sang frame sau.
+- `C` và `Shift+C` luôn lấy toàn bộ bbox của frame vừa xem; `Ctrl+C/V`, `V`, `Ctrl+B` và `Z` giữ nguyên chức năng.
+- Bỏ bảng phím tắt nổi ở cuối màn hình.
+
 ## 1.6.2 - 2026-10-19
 
 - Đổi chỉnh cạnh body hàng loạt sang tọa độ tuyệt đối: cạnh ở mọi frame đích được đặt đúng tại vị trí đường xanh của frame nguồn, không cộng/trừ delta pixel.

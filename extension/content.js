@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.6.2";
+  const VERSION = "1.6.3";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";
@@ -44,7 +44,6 @@
     bboxMarkedFrames: new Set(),
     bboxMarkedScope: null,
     markedBadge: null,
-    bboxShortcutBar: null,
     manualMode: null,
     lastPatch: null,
     polygonDrawingInstalled: false,
@@ -411,53 +410,6 @@
         pointer-events: auto;
       }
       #nl-marked-frames button[hidden] { display: none; }
-      #nl-bbox-shortcuts {
-        position: fixed;
-        z-index: 19;
-        left: 50%;
-        bottom: 8px;
-        transform: translateX(-50%);
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 5px;
-        max-width: calc(100vw - 28px);
-        padding: 6px 8px;
-        border: 1px solid #8751b3;
-        border-radius: 7px;
-        color: #e9edf3;
-        background: rgba(23, 26, 32, .96);
-        box-shadow: 0 5px 18px rgba(0,0,0,.42);
-        font-size: 11px;
-        pointer-events: auto;
-      }
-      #nl-bbox-shortcuts[hidden] { display: none !important; }
-      #nl-bbox-shortcuts button {
-        min-height: 25px;
-        padding: 2px 6px;
-        border: 1px solid #4b5260;
-        border-radius: 5px;
-        color: #e9edf3;
-        background: #202630;
-        white-space: nowrap;
-        cursor: pointer;
-        font: inherit;
-      }
-      #nl-bbox-shortcuts button:hover { border-color: #b56cff; background: #343044; }
-      #nl-bbox-shortcuts button:active { transform: translateY(1px); }
-      #nl-bbox-shortcuts kbd {
-        display: inline-block;
-        min-width: 16px;
-        padding: 1px 4px;
-        border: 1px solid #687181;
-        border-radius: 4px;
-        color: #fff;
-        background: #2d3340;
-        text-align: center;
-        font: inherit;
-        font-weight: 750;
-      }
-      #nl-bbox-shortcuts .nl-body-edge-help { align-self: center; color: #65f29b; white-space: nowrap; }
       .nl-eye-group-hint {
         margin-top: 7px;
         padding: 7px 8px;
@@ -1167,60 +1119,6 @@
     badge.querySelector("button").addEventListener("click", clearMarkedFrames);
     document.body.appendChild(badge);
     state.markedBadge = badge;
-  }
-
-  function buildBboxShortcutBar() {
-    const bar = document.createElement("div");
-    bar.id = "nl-bbox-shortcuts";
-    bar.hidden = true;
-    bar.addEventListener("click", (event) => {
-      const button = event.target.closest("button[data-bbox-command]");
-      if (!button || !bar.contains(button)) return;
-      event.preventDefault();
-      event.stopPropagation();
-      runBboxShortcutCommand(button.dataset.bboxCommand);
-    });
-    document.body.appendChild(bar);
-    state.bboxShortcutBar = bar;
-  }
-
-  function runBboxShortcutCommand(command) {
-    if (!quickBboxReady() || state.operationBusy || anyBulkDialogOpen()) return;
-    const pair = S.labelSel === "hand" || S.labelSel === "eye";
-    if (command === "delete") deleteQuickBbox(pair ? "all" : "rank");
-    else if (command === "delete-next") deleteQuickBbox(pair ? "all" : "rank", true);
-    else if (command === "left") deleteQuickBbox("left");
-    else if (command === "right") deleteQuickBbox("right");
-    else if (command === "previous") copyPreviousQuickBbox(false);
-    else if (command === "previous-next") copyPreviousQuickBbox(true);
-    else if (command === "copy") copyQuickBboxToClipboard();
-    else if (command === "paste") pasteQuickBboxFromClipboard();
-    else if (command === "mark") toggleMarkedFrame();
-    else if (command === "bulk") openBulkDialog();
-    else if (command === "undo") undoQuickBbox();
-  }
-
-  function updateBboxShortcutBar() {
-    const bar = state.bboxShortcutBar;
-    if (!bar) return;
-    if (!quickBboxReady()) {
-      bar.hidden = true;
-      return;
-    }
-    const pair = S.labelSel === "hand" || S.labelSel === "eye";
-    bar.innerHTML = `${pair
-      ? '<button type="button" data-bbox-command="delete"><kbd>X</kbd> xóa hết</button><button type="button" data-bbox-command="left"><kbd>1</kbd> trái</button><button type="button" data-bbox-command="right"><kbd>2</kbd> phải</button>'
-      : '<button type="button" data-bbox-command="delete"><kbd>X</kbd> xóa box</button>'}
-      <button type="button" data-bbox-command="delete-next"><kbd>Shift+X</kbd> xóa + frame sau</button>
-      <button type="button" data-bbox-command="previous"><kbd>C</kbd> chép frame vừa xem</button>
-      <button type="button" data-bbox-command="previous-next"><kbd>Shift+C</kbd> chép + frame sau</button>
-      <button type="button" data-bbox-command="copy"><kbd>Ctrl+C</kbd> copy</button>
-      <button type="button" data-bbox-command="paste"><kbd>Ctrl+V</kbd> dán</button>
-      <button type="button" data-bbox-command="mark"><kbd>V</kbd> đánh dấu</button>
-      <button type="button" data-bbox-command="bulk"><kbd>Ctrl+B</kbd> hàng loạt</button>
-      <button type="button" data-bbox-command="undo"><kbd>Z</kbd> hoàn tác</button>
-      ${S.labelSel === "body" ? '<span class="nl-body-edge-help">Double-click giữa cạnh → kéo → Ctrl+B</span>' : ""}`;
-    bar.hidden = false;
   }
 
   function captureSidebarPosition() {
@@ -3996,15 +3894,12 @@
         quickBboxReady() && event.code === "KeyX") {
       event.preventDefault();
       event.stopImmediatePropagation();
-      if (!event.repeat) {
-        const selector = S.labelSel === "hand" || S.labelSel === "eye" ? "all" : "rank";
-        deleteQuickBbox(selector, event.shiftKey);
-      }
+      if (!event.repeat) deleteQuickBbox("all", event.shiftKey);
       return;
     }
     if (!event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey && !typing &&
         !anyBulkDialogOpen() && quickBboxReady() && (event.code === "Digit1" || event.code === "Numpad1" ||
-          event.code === "Digit2" || event.code === "Numpad2") && (S.labelSel === "hand" || S.labelSel === "eye")) {
+          event.code === "Digit2" || event.code === "Numpad2")) {
       event.preventDefault();
       event.stopImmediatePropagation();
       if (!event.repeat) deleteQuickBbox(event.code.endsWith("1") ? "left" : "right");
@@ -4157,7 +4052,6 @@
       state.sidebarScope = null;
       if (state.toolbar) state.toolbar.hidden = true;
       if (state.markedBadge) state.markedBadge.hidden = true;
-      if (state.bboxShortcutBar) state.bboxShortcutBar.hidden = true;
       if (state.manualMode || state.lastPatch) cancelManualMode();
       restoreNativeGroups();
       return;
@@ -4185,7 +4079,6 @@
       ensureCurrentClipOpen();
       applyFilter();
       updateMarkedUI();
-      updateBboxShortcutBar();
       trackQuickFrameHistory();
       state.sidebarScope = typeof S !== "undefined" ? { generation: S.gen, label: S.labelSel } : null;
     } finally {
@@ -4211,7 +4104,6 @@
     state.toolbar = buildToolbar();
     state.list.before(state.toolbar);
     buildMarkedBadge();
-    buildBboxShortcutBar();
     ensureSidebarRendering();
     ensureStatusRendering();
     ensureOrganizedPlayback();
