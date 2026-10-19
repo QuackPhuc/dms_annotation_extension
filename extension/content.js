@@ -1795,6 +1795,24 @@
     return event.target === canvas || (!!stage && event.target === stage);
   }
 
+  function currentBboxDeleteRegion() {
+    const region = state.bboxDeleteRegion;
+    try {
+      return region && typeof ED !== "undefined" && region.generation === S.gen && region.key === ED.key &&
+        region.label === S.labelSel ? region : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function boxInsideRegion(box, points) {
+    try {
+      return Array.isArray(box) && typeof boxInPoly === "function" && boxInPoly(box, points);
+    } catch (_) {
+      return false;
+    }
+  }
+
   function commitBboxDeletePolygon() {
     if (!bboxEditingAvailable() || state.bboxMode !== "delete") return;
     if (!Array.isArray(ED.poly) || ED.poly.length < 3) {
@@ -1805,9 +1823,7 @@
     state.bboxDeleteRegion = { generation: S.gen, key: ED.key, label: S.labelSel, points };
     const removed = [];
     ED.items.forEach((item, index) => {
-      try {
-        if (Array.isArray(item?.box) && typeof boxInPoly === "function" && boxInPoly(item.box, points)) removed.push(index);
-      } catch (_) {}
+      if (boxInsideRegion(item?.box, points)) removed.push(index);
     });
     for (const index of removed.reverse()) ED.items.splice(index, 1);
     ED.poly = [];
@@ -1817,8 +1833,8 @@
     if (typeof lsTouch === "function") lsTouch();
     if (typeof edRepaint === "function") edRepaint();
     notify(removed.length
-      ? `Đã xóa ${removed.length} box · tiếp tục vẽ vùng khác hoặc nhấn Esc`
-      : "Không có box nào trong vùng xóa · tiếp tục vẽ hoặc nhấn Esc");
+      ? `Đã xóa ${removed.length} box · Ctrl+B để xóa trên nhiều frame · Esc để thoát`
+      : "Không có box nào trong vùng xóa · Ctrl+B để áp dụng cho frame khác · Esc để thoát");
   }
 
   function onBboxMouseDown(event) {
@@ -1845,7 +1861,7 @@
           return;
         }
       }
-      if (!ED.poly.length) state.bboxDeleteRegion = null;
+      // Keep the closed region until the next one closes, so Ctrl+B can still apply it.
       ED.poly.push(point);
       if (typeof edRepaint === "function") edRepaint();
       return;
@@ -1930,26 +1946,33 @@
   function drawBboxDeletePolygon() {
     if (state.bboxMode !== "delete" || !bboxLabelingReady() || typeof ED === "undefined" ||
         typeof ctx === "undefined" || !Array.isArray(ED.poly)) return;
-    const saved = state.bboxDeleteRegion;
-    const sameSavedRegion = saved && saved.generation === S.gen && saved.key === ED.key && saved.label === S.labelSel;
     const draft = ED.poly;
-    const points = draft.length ? draft : sameSavedRegion ? saved.points : null;
-    if (!points?.length) return;
+    const saved = currentBboxDeleteRegion();
+    if (!draft.length && !saved) return;
     const canvas = document.getElementById("view");
     const scale = canvas.width / S.sess.src_w;
     const unit = typeof pxK === "function" ? pxK() : canvas.width / canvas.getBoundingClientRect().width;
     ctx.save();
     ctx.setLineDash([]);
     ctx.strokeStyle = "#ff4d5a";
-    ctx.fillStyle = "rgba(255,77,90,.22)";
     ctx.lineWidth = 2 * unit;
-    ctx.beginPath();
-    points.forEach(([x, y], index) => ctx[index ? "lineTo" : "moveTo"](x * scale, y * scale));
-    if (points.length >= 3) {
-      ctx.closePath();
-      ctx.fill();
+    for (const points of [saved?.points, draft]) {
+      if (!points?.length) continue;
+      ctx.beginPath();
+      points.forEach(([x, y], index) => ctx[index ? "lineTo" : "moveTo"](x * scale, y * scale));
+      if (points.length >= 3) {
+        ctx.closePath();
+        ctx.fillStyle = "rgba(255,77,90,.22)";
+        ctx.fill();
+      }
+      ctx.stroke();
+      for (const [x, y] of points) {
+        ctx.beginPath();
+        ctx.arc(x * scale, y * scale, 3.5 * unit, 0, Math.PI * 2);
+        ctx.fillStyle = "#ff4d5a";
+        ctx.fill();
+      }
     }
-    ctx.stroke();
     if (draft.length && ED.mouse) {
       const [x, y] = draft[draft.length - 1];
       ctx.setLineDash([4 * unit, 4 * unit]);
@@ -1957,13 +1980,6 @@
       ctx.moveTo(x * scale, y * scale);
       ctx.lineTo(ED.mouse[0], ED.mouse[1]);
       ctx.stroke();
-      ctx.setLineDash([]);
-    }
-    for (const [x, y] of points) {
-      ctx.beginPath();
-      ctx.arc(x * scale, y * scale, 3.5 * unit, 0, Math.PI * 2);
-      ctx.fillStyle = "#ff4d5a";
-      ctx.fill();
     }
     ctx.restore();
   }
@@ -2006,7 +2022,7 @@
         </div>
 
         <span class="nl-label nl-source-label">Đối tượng nguồn</span>
-        <div class="nl-scope">
+        <div class="nl-scope nl-source-options">
           <label class="nl-eye-selected-option"><input type="radio" name="nl-eye-scope" value="selected"><span class="nl-item-selected-text">Chỉ mắt đang chọn</span></label>
           <label><input type="radio" name="nl-eye-scope" value="all"><span class="nl-item-all-text">Tất cả mắt của frame hiện tại</span></label>
         </div>
@@ -2090,6 +2106,14 @@
     for (const button of dialog.querySelectorAll("[data-eye-direction]")) {
       button.classList.toggle("on", button.dataset.eyeDirection === state.eyeBulkDirection);
     }
+    const deleteMode = context.operation === "delete-region";
+    dialog.classList.toggle("nl-subtract", deleteMode);
+    dialog.querySelector(".nl-source-label").hidden = deleteMode;
+    dialog.querySelector(".nl-source-options").hidden = deleteMode;
+    if (deleteMode) {
+      updateBboxDeleteBulkDialog(dialog, context);
+      return;
+    }
     const hasSelected = context.selected.length > 0;
     dialog.querySelector(".nl-eye-selected-option").hidden = !hasSelected;
     const checked = dialog.querySelector('input[name="nl-eye-scope"]:checked');
@@ -2134,6 +2158,26 @@
     dialog.querySelector(".nl-apply").disabled = Boolean(picked.error) || !sourceCount || state.operationBusy;
   }
 
+  function updateBboxDeleteBulkDialog(dialog, context) {
+    dialog.querySelector("h2").textContent = `Xóa ${context.labelName} trong vùng đỏ theo clip`;
+    dialog.querySelector(".nl-write-label").hidden = true;
+    dialog.querySelector(".nl-write-options").hidden = true;
+    dialog.querySelector(".nl-sub").textContent =
+      `${context.clip} · nguồn frame ${context.sourceIndex + 1}/${context.frames.length}. ` +
+      "Chỉ xóa box nằm trong vùng đỏ; giữ các box bên ngoài.";
+    const picked = selectedEyeBulkTargets();
+    const preview = dialog.querySelector(".nl-preview");
+    preview.classList.toggle("err", Boolean(picked.error));
+    if (picked.error) preview.textContent = picked.error;
+    else {
+      const skipped = picked.targets.filter((g) => frameState(g) === "done").length;
+      preview.textContent = `Xóa box trong vùng đỏ trên ${picked.targets.length} frame ` +
+        `${state.eyeBulkDirection === "after" ? "sau" : "trước"}` +
+        (skipped ? ` · bỏ qua ${skipped} frame đã Done` : "") + ". Tối đa 4 request chạy song song.";
+    }
+    dialog.querySelector(".nl-apply").disabled = Boolean(picked.error) || state.operationBusy;
+  }
+
   function openEyeBulkDialog() {
     if (state.operationBusy) return;
     const context = currentEyeClipContext();
@@ -2168,6 +2212,38 @@
     state.eyeBulkContext = context;
     const dialog = ensureEyeBulkDialog();
     dialog.querySelector(`input[name="nl-eye-scope"][value="${context.selected.length ? "selected" : "all"}"]`).checked = true;
+    updateEyeBulkDialog();
+    if (!dialog.open) dialog.showModal();
+    dialog.querySelector(".nl-count").focus();
+    dialog.querySelector(".nl-count").select();
+  }
+
+  function openBboxDeleteBulkDialog() {
+    if (state.operationBusy) return;
+    if (ED.poly?.length) {
+      notify("Hãy khép vùng đang vẽ (chuột phải hoặc click điểm đầu) trước khi Ctrl+B");
+      return;
+    }
+    const region = currentBboxDeleteRegion();
+    if (!region) {
+      notify("Hãy vẽ và khép vùng xóa trên frame hiện tại trước khi Ctrl+B");
+      return;
+    }
+    if (typeof boxInPoly !== "function") {
+      notify("Trang không hỗ trợ kiểm tra box trong vùng xóa");
+      return;
+    }
+    const context = currentGenericClipContext();
+    if (!context) {
+      notify("Hãy mở một frame thuộc clip trước khi Ctrl+B");
+      return;
+    }
+    state.eyeBulkContext = {
+      ...context,
+      operation: "delete-region",
+      region: region.points.map((point) => point.slice())
+    };
+    const dialog = ensureEyeBulkDialog();
     updateEyeBulkDialog();
     if (!dialog.open) dialog.showModal();
     dialog.querySelector(".nl-count").focus();
@@ -2378,6 +2454,10 @@
       updateBulkDialog();
       if (!dialog.open) dialog.showModal();
       dialog.querySelector(".nl-apply").focus();
+      return;
+    }
+    if (state.bboxMode === "delete" && bboxLabelingReady()) {
+      openBboxDeleteBulkDialog();
       return;
     }
     if (S.labelSel === "eye_lmk") {
@@ -2714,8 +2794,56 @@
   }
 
   function applyItemBulkCopy() {
-    if (state.eyeBulkContext?.label === "eye_lmk") applyEyeBulkCopy();
+    if (state.eyeBulkContext?.operation === "delete-region") applyBboxDeleteRegion();
+    else if (state.eyeBulkContext?.label === "eye_lmk") applyEyeBulkCopy();
     else applyGenericBulkCopy();
+  }
+
+  async function applyBboxDeleteRegion() {
+    const context = state.eyeBulkContext;
+    if (state.operationBusy || !context || !BBOX_LABELS.has(context.label) ||
+        !pageLabelingReady(context.label)) return;
+    const picked = selectedEyeBulkTargets();
+    if (context.generation !== S.gen || context.label !== S.labelSel || picked.error) {
+      updateEyeBulkDialog();
+      return;
+    }
+    const targets = picked.targets.filter((g) => frameState(g) !== "done");
+    if (!targets.length) {
+      notify("Các frame đã chọn đều đang ở trạng thái Done");
+      return;
+    }
+    const dialog = state.eyeBulkDialog;
+    const preview = dialog.querySelector(".nl-preview");
+    const apply = dialog.querySelector(".nl-apply");
+    let removedBoxes = 0;
+    let changedFrames = 0;
+    state.operationBusy = true;
+    apply.disabled = true;
+    try {
+      const result = await runQueue(targets, async (g) => {
+        const items = await getFrameGenericItems(g, context.label, context.generation);
+        const keptItems = items.filter((item) => !boxInsideRegion(item?.box, context.region));
+        if (keptItems.length === items.length) return;
+        await saveFrameGenericItems(g, context.label, keptItems, context.generation);
+        removedBoxes += items.length - keptItems.length;
+        changedFrames += 1;
+      }, (done, total) => {
+        preview.classList.remove("err");
+        preview.textContent = `Đang xóa ${done}/${total} frame…`;
+      }, 4);
+      if (typeof fsRender === "function" && S.gen === context.generation) fsRender();
+      if (typeof paint === "function" && S.gen === context.generation) paint();
+      if (result.error) throw new Error(`đã xử lý ${result.completed}/${targets.length}: ${result.error.message}`);
+      dialog.close();
+      notify(`Đã xóa ${removedBoxes} box trong vùng đỏ trên ${changedFrames}/${targets.length} frame`);
+    } catch (error) {
+      preview.classList.add("err");
+      preview.textContent = `Dừng vì lỗi: ${error.message}`;
+    } finally {
+      state.operationBusy = false;
+      if (apply.isConnected) apply.disabled = false;
+    }
   }
 
   async function applyGenericBulkCopy() {
