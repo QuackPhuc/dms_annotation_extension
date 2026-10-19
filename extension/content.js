@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.6.7";
+  const VERSION = "1.6.8";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";
@@ -2289,8 +2289,13 @@
       } catch (_) {}
     });
     for (const index of removed.reverse()) ED.items.splice(index, 1);
-    if (removed.length && quickBboxReady()) {
-      rememberBboxUndo([{ g: Number(S.shownG), items: beforeItems }]);
+    if (quickBboxReady()) {
+      // The polygon itself is the bulk operation. Keep it even when it does
+      // not hit a box on the source frame, because matching boxes can still
+      // exist inside the same region on the destination frames.
+      if (removed.length) {
+        rememberBboxUndo([{ g: Number(S.shownG), items: beforeItems }]);
+      }
       state.quickLastOperation = {
         type: "delete",
         selector: "region",
@@ -2469,6 +2474,18 @@
     if (state.bboxMode === "create" && state.bboxCreateDraft) {
       event.preventDefault();
       event.stopImmediatePropagation();
+      return;
+    }
+    // Closing an M polygon by clicking its first point commits on mousedown.
+    // Do not let the matching mouseup fall through to the native bbox drag
+    // cleanup, which would discard the just-created bulk delete operation.
+    if (state.bboxMode === "delete") {
+      if (bboxDeleteTarget(event)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+      ED.drag = null;
+      ED.marq = null;
       return;
     }
     // Match CVAT: while dragging, let the box follow the pointer outside the
