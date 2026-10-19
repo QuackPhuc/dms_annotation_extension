@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.6.6";
+  const VERSION = "1.6.7";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";
@@ -19,6 +19,7 @@
   ]);
   const OBJECT_BBOX_LABELS = new Set(["cigarette", "e_cigarette", "phone", "can", "bottle"]);
   const QUICK_BBOX_LABELS = new Set(["body", "hand", "eye"]);
+  const BBOX_OVERLAP_IOU_THRESHOLD = 0.9;
 
   if (!ALLOWED_ORIGINS.has(location.origin) || document.getElementById(ROOT_ID)) return;
 
@@ -609,8 +610,13 @@
       for (let right = left + 1; right < boxes.length; right += 1) {
         const a = boxes[left].box;
         const b = boxes[right].box;
-        if (Math.min(a[2], b[2]) > Math.max(a[0], b[0]) &&
-            Math.min(a[3], b[3]) > Math.max(a[1], b[1])) {
+        const intersectionWidth = Math.max(0, Math.min(a[2], b[2]) - Math.max(a[0], b[0]));
+        const intersectionHeight = Math.max(0, Math.min(a[3], b[3]) - Math.max(a[1], b[1]));
+        const intersection = intersectionWidth * intersectionHeight;
+        const areaA = Math.max(0, a[2] - a[0]) * Math.max(0, a[3] - a[1]);
+        const areaB = Math.max(0, b[2] - b[0]) * Math.max(0, b[3] - b[1]);
+        const union = areaA + areaB - intersection;
+        if (union > 0 && intersection / union >= BBOX_OVERLAP_IOU_THRESHOLD) {
           overlapping.add(boxes[left].index);
           overlapping.add(boxes[right].index);
         }

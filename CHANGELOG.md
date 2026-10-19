@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.7 - 2026-10-19
+
+- Chỉ cảnh báo bbox trùng màu đỏ khi IoU của cặp box đạt từ 90%; box nhỏ giao một phần hoặc nằm trong box lớn không còn bị báo nhầm.
+
 ## 1.6.6 - 2026-10-19
 
 - Sửa hướng hiển thị tổng số ảnh trong cột part để đọc từ trên xuống dưới, không còn bị xoay ngược.

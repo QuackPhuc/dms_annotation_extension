@@ -1,6 +1,6 @@
 # NOTA Labeling Organizer
 
-Phiên bản hiện tại: **1.6.6**.
+Phiên bản hiện tại: **1.6.7**.
 
 Popup có nút **Kiểm tra update**. Với bản cài từ Chrome Web Store, nút yêu cầu Chrome kiểm tra và cài bản Store mới. Với bản `Load unpacked`, hãy double-click `Install-NOTA-Updater.cmd` một lần. Từ phiên bản sau, nút **Update ngay** sẽ tự tải GitHub Release, kiểm tra SHA256, thay file và reload extension. Nếu file trên máy đã mới hơn runtime Chrome đang giữ, popup vẫn bắt buộc reload để nạp đúng phiên bản.
 
@@ -31,7 +31,7 @@ Extension này hỗ trợ seatbelt và eye 15pt trên màn hình **Labeling** c�
 - Khi ở label **body**, **hand** hoặc **eye box**: `X` xóa toàn bộ box trên frame (`Shift+X` xóa toàn bộ rồi sang frame sau), `1` xóa box bên trái, `2` xóa box bên phải, `C` lấy toàn bộ box từ frame vừa xem (`Shift+C` lấy box rồi sang frame sau), `Ctrl+C` / `Ctrl+V` copy và dán giữa các frame không liền nhau, `V` đánh dấu frame, `Ctrl+B` áp dụng thao tác gần nhất cho số frame, đến `end` hoặc các frame đã đánh dấu, và `Z` hoàn tác. Một lần `Z` hoàn tác toàn bộ một đợt hàng loạt.
 - Các phím thao tác trên hoạt động trực tiếp trên ảnh; bảng phím tắt nổi ở cuối màn hình đã được bỏ.
 - Với **body**, **hand** và **eye box** có nhiều box, click một box rồi nhấn `Ctrl+B` để thêm bản sao của riêng box đó vào mỗi frame đích; toàn bộ box cũ ở frame đích được giữ nguyên. `Ctrl+C` / `Ctrl+V` vẫn có thể dùng box đang chọn để thay box cùng vị trí trái/phải.
-- Trên mọi label bbox, các box có phần giao nhau được phủ và viền đỏ; góc phải phía trên ảnh luôn hiện `BBox: N` để kiểm tra số lượng. Cột tên part ở danh sách bên trái hiển thị thêm tổng số ảnh của part.
+- Trên mọi label bbox, hai box có IoU từ 90% được phủ và viền đỏ; box nhỏ chỉ nằm trong một phần box lớn sẽ không bị cảnh báo. Góc phải phía trên ảnh luôn hiện `BBox: N` để kiểm tra số lượng. Cột tên part ở danh sách bên trái hiển thị thêm tổng số ảnh của part.
 - Với **body**, double-click ô giữa cạnh trên/phải/dưới/trái để chọn riêng cạnh đó, sau đó kéo. Cạnh gốc màu trắng vẫn hiển thị, cạnh mới màu xanh. `Ctrl+B` đặt cạnh tương ứng của mọi frame đích vào đúng tọa độ tuyệt đối của đường xanh; ba cạnh còn lại của từng body box giữ nguyên.
 - Kéo vùng trống trong khung nét đứt để di chuyển cả 15 điểm; giữ `Ctrl` và kéo để xoay cả mắt quanh tâm. Kéo ô vuông trên cạnh/góc để co giãn cả cụm mắt; kéo trực tiếp một điểm vẫn chỉ sửa điểm đó.
 - Giữ khung nét đứt của SAM3 khi chuyển frame và quay lại. Frame chưa mở trong cùng clip dùng khung hiện tại; frame đã chỉnh khung riêng vẫn nhớ khung của nó. Khung không tự co lại theo đoạn mask nhỏ vừa thêm.
