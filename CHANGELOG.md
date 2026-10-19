@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.1 - 2026-10-19
+
+- Body, hand và eye box có thể click chọn một box rồi dùng `Ctrl+B` để chỉ sao chép box đó sang các frame đích; box cùng thứ tự trái/phải được thay và các box còn lại được giữ nguyên.
+- `Ctrl+C` / `Ctrl+V` cũng ưu tiên box đang chọn trên các label multi-box.
+- Sửa `Ctrl+B` cho vùng xóa bbox tạo bằng `M`; polygon xóa được áp dụng đúng lên các frame trước/sau hoặc frame đã đánh dấu.
+
 ## 1.6.0 - 2026-10-19
 
 - Thêm thanh phím tắt luôn hiển thị cho body, hand và eye box.

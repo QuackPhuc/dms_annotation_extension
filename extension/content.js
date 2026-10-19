@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.6.0";
+  const VERSION = "1.6.1";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";
@@ -1714,12 +1714,28 @@
     if (sourceIndex < 0) return null;
     const sourceItems = currentGenericItems(label);
     let selected = [];
+    let selectedMode = "";
+    let selectedRank = -1;
     try {
+      if (QUICK_BBOX_LABELS.has(label) && typeof ED !== "undefined" && ED.key === rvKey(source) &&
+          ED.lab === label && Array.isArray(ED.items)) {
+        const indexes = typeof edSelected === "function" ? edSelected() :
+          ED.selSet?.size ? Array.from(ED.selSet) : Number.isInteger(ED.sel) && ED.sel >= 0 ? [ED.sel] : [];
+        const index = indexes.length === 1 ? Number(indexes[0]) : -1;
+        if (index >= 0 && index < sourceItems.length) {
+          selected = [index];
+          selectedMode = "clicked";
+          selectedRank = bboxHorizontalOrder(sourceItems).findIndex((entry) => entry.index === index);
+        }
+      }
       const created = state.lastCreatedBox;
-      if (label !== "face_lmk" && created && created.generation === S.gen && created.label === label &&
+      if (!selected.length && label !== "face_lmk" && created && created.generation === S.gen && created.label === label &&
           created.key === rvKey(source) && typeof ED !== "undefined" && ED.key === created.key && ED.lab === label) {
         const index = ED.items.indexOf(created.item);
-        if (index >= 0 && index < sourceItems.length) selected = [index];
+        if (index >= 0 && index < sourceItems.length) {
+          selected = [index];
+          selectedMode = "created";
+        }
       }
     } catch (_) {}
     return {
@@ -1731,6 +1747,8 @@
       labelName: genericLabelName(label),
       sourceItems,
       selected,
+      selectedMode,
+      selectedRank,
       operation: quickOperationMatches() ? { ...state.quickLastOperation } : null
     };
   }
@@ -1848,13 +1866,21 @@
 
   function copyQuickBboxToClipboard() {
     if (!quickBboxReady() || !Array.isArray(ED?.items)) return;
+    const indexes = typeof edSelected === "function" ? edSelected() :
+      ED.selSet?.size ? Array.from(ED.selSet) : Number.isInteger(ED.sel) && ED.sel >= 0 ? [ED.sel] : [];
+    const selectedIndex = indexes.length === 1 ? Number(indexes[0]) : -1;
+    const selected = selectedIndex >= 0 && selectedIndex < ED.items.length;
     state.bboxClipboard = {
       generation: S.gen,
       session: S.sess,
       label: S.labelSel,
-      items: cloneGenericItems(ED.items)
+      items: cloneGenericItems(selected ? [ED.items[selectedIndex]] : ED.items),
+      mode: selected ? "selected" : "all",
+      rank: selected ? bboxHorizontalOrder(ED.items).findIndex((entry) => entry.index === selectedIndex) : -1
     };
-    notify(`Đã copy ${ED.items.length} box ${S.labelSel} · chuyển frame rồi nhấn Ctrl+V`);
+    notify(selected
+      ? `Đã copy box ${S.labelSel} đang chọn · chuyển frame rồi nhấn Ctrl+V`
+      : `Đã copy ${ED.items.length} box ${S.labelSel} · chuyển frame rồi nhấn Ctrl+V`);
   }
 
   function pasteQuickBboxFromClipboard() {
@@ -1864,7 +1890,18 @@
       notify(`Clipboard chưa có box ${S.labelSel}`);
       return;
     }
-    replaceCurrentBboxItems(clipboard.items, { type: "copy" }, `Đã dán ${clipboard.items.length} box ${S.labelSel}`);
+    let nextItems = clipboard.items;
+    if (clipboard.mode === "selected") {
+      nextItems = cloneGenericItems(ED.items);
+      const order = bboxHorizontalOrder(nextItems);
+      const target = order[Math.max(0, Number(clipboard.rank) || 0)];
+      const copied = cloneGenericItems(clipboard.items)[0];
+      if (target && copied) nextItems[target.index] = copied;
+      else if (copied) nextItems.push(copied);
+    }
+    replaceCurrentBboxItems(nextItems, { type: "copy" }, clipboard.mode === "selected"
+      ? `Đã dán box ${S.labelSel} vào cùng vị trí trái/phải`
+      : `Đã dán ${clipboard.items.length} box ${S.labelSel}`);
   }
 
   async function undoQuickBbox() {
@@ -2400,6 +2437,10 @@
     // image. On release, crop the outside portion at the nearest image edge,
     // then let the native editor save the resulting smaller box.
     settleBboxInsideImage();
+    if (quickBboxReady() && ED.drag && !ED.drag.create &&
+        !(state.bodyEdgePatch && !state.bodyEdgePatch.ready && state.bodyEdgePatch.key === ED.key)) {
+      state.quickLastOperation = null;
+    }
     if (quickBboxReady() && ED.drag?.moved && !ED.drag.create && Array.isArray(ED.drag.box0) &&
         !(state.bodyEdgePatch && state.bodyEdgePatch.key === ED.key &&
           state.bodyEdgePatch.itemIndex === ED.drag.n)) {
@@ -2554,7 +2595,9 @@
     dialog.querySelector(".nl-source-label").textContent = eyeMode ? "Đối tượng nguồn" : "Phần cần sao chép";
     dialog.querySelector(".nl-source-label").hidden = operationMode;
     dialog.querySelector(".nl-scope").hidden = operationMode;
-    dialog.querySelector(".nl-item-selected-text").textContent = eyeMode ? "Chỉ mắt đang chọn" : "Chỉ box mới thêm";
+    dialog.querySelector(".nl-item-selected-text").textContent = eyeMode
+      ? "Chỉ mắt đang chọn"
+      : context.selectedMode === "clicked" ? "Chỉ box đang chọn" : "Chỉ box mới thêm";
     dialog.querySelector(".nl-item-all-text").textContent = eyeMode
       ? "Tất cả mắt của frame hiện tại"
       : boxMode ? "Toàn bộ box hiện tại" : "Toàn bộ face 7pt hiện tại";
@@ -2577,7 +2620,11 @@
       const skipped = picked.targets.filter((g) => frameState(g) === "done").length;
       const writeText = eyeMode
         ? (writeMode === "replace" ? "thay toàn bộ mắt ở frame đích" : "thay mắt cùng vị trí, giữ các mắt còn lại")
-        : scope === "selected" ? "thêm box mới và giữ các box đang có" : "thay bằng toàn bộ dữ liệu của frame nguồn";
+        : scope === "selected"
+          ? context.selectedMode === "clicked"
+            ? "thay box cùng vị trí trái/phải và giữ các box còn lại"
+            : "thêm box mới và giữ các box đang có"
+          : "thay bằng toàn bộ dữ liệu của frame nguồn";
       const directionText = state.eyeBulkDirection === "marked" ? "đã đánh dấu" :
         state.eyeBulkDirection === "after" ? "sau" : "trước";
       const actionText = operation?.type === "delete"
@@ -3245,13 +3292,18 @@
       const result = await runQueue(targets, async (g) => {
         let nextItems;
         const currentItems = await getFrameGenericItems(g, context.label, context.generation);
-        undoFrames.push({ g, items: currentItems });
+        undoFrames.push({ g, items: cloneGenericItems(currentItems) });
         if (operationMode) {
           nextItems = applyQuickOperationToItems(currentItems, operation);
         } else if (scope === "selected") {
           nextItems = currentItems;
           const added = cloneGenericItems(sourceItems)[0];
-          if (added && !nextItems.some((item) => sameGenericItem(item, added))) nextItems.push(added);
+          if (added && context.selectedMode === "clicked") {
+            const targetOrder = bboxHorizontalOrder(nextItems);
+            const target = targetOrder[Math.max(0, Number(context.selectedRank) || 0)];
+            if (target) nextItems[target.index] = added;
+            else nextItems.push(added);
+          } else if (added && !nextItems.some((item) => sameGenericItem(item, added))) nextItems.push(added);
         } else {
           nextItems = cloneGenericItems(sourceItems);
         }

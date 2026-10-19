@@ -2,7 +2,7 @@
 
 Chrome extension hỗ trợ sắp xếp frame theo clip và thao tác nhãn nhanh trên DMS Labeling.
 
-Phiên bản hiện tại: **1.6.0**
+Phiên bản hiện tại: **1.6.1**
 
 [Tải bản mới nhất](https://github.com/tanmainhat0502/dms_annotation_extension/releases/latest)
 
@@ -39,7 +39,7 @@ Chrome không cho bản `Load unpacked` tự thay mã nguồn nếu chỉ dùng 
 
 Thiết lập một lần:
 
-1. Cài bản 1.6.0 vào một thư mục cố định bằng **Load unpacked**.
+1. Cài bản 1.6.1 vào một thư mục cố định bằng **Load unpacked**.
 2. Double-click `Install-NOTA-Updater.cmd` trong thư mục đó.
 3. Đóng và mở lại popup. Nút **Cài update một lần** sẽ biến mất khi updater sẵn sàng.
 
