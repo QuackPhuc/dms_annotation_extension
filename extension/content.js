@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.6.3";
+  const VERSION = "1.6.4";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";

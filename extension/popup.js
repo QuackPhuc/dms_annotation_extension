@@ -99,13 +99,17 @@ async function runNativeUpdate() {
   try {
     const response = await sendNative({ action: "update", expectedVersion });
     if (!response?.ok) throw new Error(response?.message || "Updater trả về lỗi");
-    if (response.status === "updated") {
-      button.textContent = `Đã update v${response.version}`;
-      show("Cập nhật hoàn tất. Extension đang reload…", "ok");
+    const installedVersion = response.version || currentVersion;
+    const runtimeIsStale = compareVersions(installedVersion, currentVersion) > 0;
+    if (response.status === "updated" || runtimeIsStale) {
+      button.textContent = `Đang nạp v${installedVersion}…`;
+      show(response.status === "updated"
+        ? "Cập nhật hoàn tất. Extension đang nạp phiên bản mới…"
+        : `File v${installedVersion} đã có trên máy. Extension đang nạp lại để thay runtime v${currentVersion}…`, "ok");
       setTimeout(() => chrome.runtime.reload(), 700);
       return;
     }
-    button.textContent = `Đã cập nhật v${response.version || currentVersion}`;
+    button.textContent = `Đã cập nhật v${installedVersion}`;
     show("Bạn đang dùng phiên bản mới nhất.", "ok");
   } catch (error) {
     button.disabled = false;

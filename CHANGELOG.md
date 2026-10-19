@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.4 - 2026-10-19
+
+- Sửa trường hợp updater báo đã dùng bản mới nhất nhưng khi mở lại popup vẫn hiện phiên bản runtime cũ.
+- Khi file extension trên máy mới hơn runtime Chrome đang giữ, popup luôn gọi reload kể cả native updater trả về `up_to_date`.
+
 ## 1.6.3 - 2026-10-19
 
 - Chuẩn hóa body/hand/eye box: `X` xóa toàn bộ bbox, `1`/`2` xóa box trái/phải; `Shift+X` xóa toàn bộ rồi sang frame sau.
