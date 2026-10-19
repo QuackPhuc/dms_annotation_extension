@@ -38,6 +38,9 @@ h1 { margin: 0 0 8px; font-size: 17px; }
 }
 .update-box button:hover { background: #7e22ce; }
 .update-box button:disabled { cursor: wait; opacity: .7; }
+.update-box button.secondary { margin-top: 7px; background: #252933; border-color: #525866; color: #f4f4f5; }
+.update-box button.secondary:hover { background: #303642; }
+.update-box button[hidden] { display: none; }
 #updateStatus { margin: 7px 0 0; color: #cbd5e1; font-size: 12px; }
 #updateStatus.ok { color: #86efac; }
 #updateStatus.warn { color: #fcd34d; }

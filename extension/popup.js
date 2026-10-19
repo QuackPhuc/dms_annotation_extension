@@ -1,8 +1,10 @@
 "use strict";
 
 const RELEASE_API = "https://api.github.com/repos/tanmainhat0502/dms_annotation_extension/releases/latest";
+const NATIVE_HOST = "ai.nota.labeling_updater";
 const currentVersion = chrome.runtime.getManifest().version;
 const button = document.getElementById("updateCheck");
+const setupButton = document.getElementById("updaterSetup");
 const status = document.getElementById("updateStatus");
 document.getElementById("currentVersion").textContent = currentVersion;
 
@@ -24,6 +26,32 @@ function compareVersions(left, right) {
 function show(message, kind = "") {
   status.className = kind;
   status.textContent = message;
+}
+
+function sendNative(message) {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendNativeMessage(NATIVE_HOST, message, (response) => {
+      const error = chrome.runtime.lastError;
+      if (error) {
+        reject(new Error(error.message));
+        return;
+      }
+      resolve(response);
+    });
+  });
+}
+
+function openUpdaterSetup() {
+  chrome.tabs.create({ url: chrome.runtime.getURL("updater/setup.html") });
+}
+
+async function detectNativeUpdater() {
+  try {
+    const response = await sendNative({ action: "ping" });
+    if (response?.ok) setupButton.hidden = true;
+  } catch (_) {
+    setupButton.hidden = false;
+  }
 }
 
 async function requestStoreUpdate() {
@@ -56,16 +84,43 @@ async function checkGitHubRelease() {
     show("Bạn đang dùng phiên bản mới nhất trên GitHub.", "ok");
     return;
   }
-  const zip = (release.assets || []).find((asset) => asset.name?.toLowerCase().endsWith(".zip"));
-  button.dataset.downloadUrl = zip?.browser_download_url || release.html_url;
-  button.textContent = `Tải bản v${latestVersion}`;
-  show(`Có bản v${latestVersion}. Bản Load unpacked cần tải gói mới và Reload trong chrome://extensions.`, "warn");
+  button.dataset.latestVersion = latestVersion;
+  button.textContent = `Update ngay v${latestVersion}`;
+  show(setupButton.hidden
+    ? `Có bản v${latestVersion}. Bấm Update ngay để tự cập nhật và reload.`
+    : `Có bản v${latestVersion}. Cài NOTA Updater một lần, sau đó chỉ cần bấm Update ngay.`, "warn");
 }
 
+async function runNativeUpdate() {
+  const expectedVersion = button.dataset.latestVersion;
+  button.disabled = true;
+  button.textContent = `Đang update v${expectedVersion}…`;
+  show("Đang tải Release, kiểm tra SHA256 và thay file extension…");
+  try {
+    const response = await sendNative({ action: "update", expectedVersion });
+    if (!response?.ok) throw new Error(response?.message || "Updater trả về lỗi");
+    if (response.status === "updated") {
+      button.textContent = `Đã update v${response.version}`;
+      show("Cập nhật hoàn tất. Extension đang reload…", "ok");
+      setTimeout(() => chrome.runtime.reload(), 700);
+      return;
+    }
+    button.textContent = `Đã cập nhật v${response.version || currentVersion}`;
+    show("Bạn đang dùng phiên bản mới nhất.", "ok");
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = `Thử update lại v${expectedVersion}`;
+    setupButton.hidden = false;
+    show(`Chưa dùng được NOTA Updater: ${error.message}`, "err");
+    openUpdaterSetup();
+  }
+}
+
+setupButton.addEventListener("click", openUpdaterSetup);
+
 button.addEventListener("click", async () => {
-  const downloadUrl = button.dataset.downloadUrl;
-  if (downloadUrl) {
-    chrome.tabs.create({ url: downloadUrl });
+  if (button.dataset.latestVersion) {
+    await runNativeUpdate();
     return;
   }
   button.disabled = true;
@@ -83,3 +138,5 @@ button.addEventListener("click", async () => {
     }
   }
 });
+
+detectNativeUpdater();

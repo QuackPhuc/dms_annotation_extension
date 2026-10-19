@@ -2,7 +2,7 @@
 
 Chrome extension hỗ trợ sắp xếp frame theo clip và thao tác nhãn nhanh trên DMS Labeling.
 
-Phiên bản hiện tại: **1.5.7**
+Phiên bản hiện tại: **1.5.8**
 
 [Tải bản mới nhất](https://github.com/tanmainhat0502/dms_annotation_extension/releases/latest)
 
@@ -31,20 +31,30 @@ Hướng dẫn đầy đủ nằm trong [extension/README.md](extension/README.m
 
 Có thể clone repository rồi chọn trực tiếp thư mục `extension` ở bước 5.
 
-## Cập nhật
+## Cập nhật một click trên Windows
 
-Mở popup extension và bấm **Kiểm tra update**.
+Chrome không cho bản `Load unpacked` tự thay mã nguồn nếu chỉ dùng API extension. Bản 1.5.8 kèm **NOTA Updater** chạy cục bộ để thực hiện phần thay file qua Native Messaging.
 
-- Nếu extension được cài từ Chrome Web Store, nút này yêu cầu Chrome kiểm tra bản Store mới.
-- Nếu extension được cài bằng **Load unpacked**, nút sẽ kiểm tra GitHub Release. Khi có bản mới, nút đổi thành **Tải bản vX.Y.Z**. Tải ZIP, giải nén đè vào thư mục extension hiện tại, rồi bấm **Reload** tại `chrome://extensions`.
+Thiết lập một lần:
 
-Chrome trên Windows không cho một extension `Load unpacked` tự tải và thay mã nguồn đang chạy. Muốn cập nhật hoàn toàn tự động, cần phát hành extension qua Chrome Web Store hoặc triển khai bằng chính sách quản trị doanh nghiệp.
+1. Cài bản 1.5.8 vào một thư mục cố định bằng **Load unpacked**.
+2. Double-click `Install-NOTA-Updater.cmd` trong thư mục đó.
+3. Đóng và mở lại popup. Nút **Cài update một lần** sẽ biến mất khi updater sẵn sàng.
+
+Từ phiên bản sau:
+
+1. Bấm **Kiểm tra update**.
+2. Khi có bản mới, bấm **Update ngay vX.Y.Z**.
+3. Updater tải GitHub Release, kiểm tra SHA256, thay file và reload extension tự động.
+
+Updater không cần quyền Administrator. Bộ cài đọc Chrome profile để tìm ID gắn với đúng thư mục đang được **Load unpacked**; native host chỉ nhận lệnh từ ID đó. Nếu extension được cài từ Chrome Web Store, Chrome vẫn dùng cơ chế cập nhật Store chính thức.
 
 ## Cấu trúc repository
 
 ```text
 extension/              Mã nguồn có thể Load unpacked
 dist/                   ZIP phát hành hiện tại
+native-updater/         Mã nguồn và script build updater Windows
 scripts/package.ps1     Đóng gói ZIP theo version trong manifest
 .github/workflows/      Tự tạo GitHub Release khi push tag vX.Y.Z
 ```
@@ -56,7 +66,7 @@ scripts/package.ps1     Đóng gói ZIP theo version trong manifest
 3. Commit và push thay đổi.
 4. Tạo tag trùng với version, ví dụ `git tag v1.5.7` rồi `git push origin v1.5.7`.
 
-GitHub Actions sẽ kiểm tra tag, đóng gói thư mục `extension` và tạo Release kèm ZIP. Popup của các bản cũ sẽ nhận ra Release mới qua GitHub API.
+GitHub Actions sẽ kiểm tra tag, đóng gói thư mục `extension` và tạo Release kèm ZIP. Popup kiểm tra Release mới qua GitHub API; NOTA Updater tải và áp dụng gói này.
 
 ## Phạm vi truy cập
 

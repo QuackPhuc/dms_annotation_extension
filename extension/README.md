@@ -1,8 +1,8 @@
 # NOTA Labeling Organizer
 
-Phiên bản hiện tại: **1.5.7**.
+Phiên bản hiện tại: **1.5.8**.
 
-Popup có nút **Kiểm tra update**. Với bản cài từ Chrome Web Store, nút yêu cầu Chrome kiểm tra và cài bản Store mới. Với bản `Load unpacked`, nút kiểm tra GitHub Release và mở đúng gói mới nếu có; Chrome trên Windows không cho extension unpacked tự thay mã nguồn của chính nó.
+Popup có nút **Kiểm tra update**. Với bản cài từ Chrome Web Store, nút yêu cầu Chrome kiểm tra và cài bản Store mới. Với bản `Load unpacked`, hãy double-click `Install-NOTA-Updater.cmd` một lần. Từ phiên bản sau, nút **Update ngay** sẽ tự tải GitHub Release, kiểm tra SHA256, thay file và reload extension.
 
 **Điều hướng:** `A` / `D` mở frame trước / sau theo đúng thứ tự đang hiển thị trong danh sách đã gom. Khi đang lọc part, hai phím này chỉ di chuyển trong part đang hiện. `Shift+A` / `Shift+D` di chuyển 10 frame. **Space** phát video theo cùng thứ tự này và dừng ở frame cuối của danh sách đang hiển thị.
 
@@ -42,7 +42,8 @@ Extension này hỗ trợ seatbelt và eye 15pt trên màn hình **Labeling** c�
 3. Nếu có bản cũ, bấm **Remove**.
 4. Bấm **Load unpacked**.
 5. Chọn thư mục `NOTA_Labeling_Organizer_Extension` này.
-6. Tải lại trang DMS và vào màn hình **Labeling**.
+6. Double-click `Install-NOTA-Updater.cmd` để bật cập nhật một click cho các phiên bản sau.
+7. Tải lại trang DMS và vào màn hình **Labeling**.
 
 ## Cách dùng
 
