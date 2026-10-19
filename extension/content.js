@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.6.8";
+  const VERSION = "1.6.9";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";
@@ -608,15 +608,7 @@
     const overlapping = new Set();
     for (let left = 0; left < boxes.length; left += 1) {
       for (let right = left + 1; right < boxes.length; right += 1) {
-        const a = boxes[left].box;
-        const b = boxes[right].box;
-        const intersectionWidth = Math.max(0, Math.min(a[2], b[2]) - Math.max(a[0], b[0]));
-        const intersectionHeight = Math.max(0, Math.min(a[3], b[3]) - Math.max(a[1], b[1]));
-        const intersection = intersectionWidth * intersectionHeight;
-        const areaA = Math.max(0, a[2] - a[0]) * Math.max(0, a[3] - a[1]);
-        const areaB = Math.max(0, b[2] - b[0]) * Math.max(0, b[3] - b[1]);
-        const union = areaA + areaB - intersection;
-        if (union > 0 && intersection / union >= BBOX_OVERLAP_IOU_THRESHOLD) {
+        if (bboxIntersectionOverUnion(boxes[left].box, boxes[right].box) >= BBOX_OVERLAP_IOU_THRESHOLD) {
           overlapping.add(boxes[left].index);
           overlapping.add(boxes[right].index);
         }
@@ -1929,15 +1921,11 @@
     }
     let nextItems = clipboard.items;
     if (clipboard.mode === "selected") {
-      nextItems = cloneGenericItems(ED.items);
-      const order = bboxHorizontalOrder(nextItems);
-      const target = order[Math.max(0, Number(clipboard.rank) || 0)];
       const copied = cloneGenericItems(clipboard.items)[0];
-      if (target && copied) nextItems[target.index] = copied;
-      else if (copied) nextItems.push(copied);
+      nextItems = mergeCopiedGenericBbox(ED.items, copied);
     }
     replaceCurrentBboxItems(nextItems, { type: "copy" }, clipboard.mode === "selected"
-      ? `Đã dán box ${S.labelSel} vào cùng vị trí trái/phải`
+      ? `Đã dán box ${S.labelSel} · thay box trùng hoặc thêm box mới`
       : `Đã dán ${clipboard.items.length} box ${S.labelSel}`);
   }
 
@@ -2676,9 +2664,7 @@
       const writeText = eyeMode
         ? (writeMode === "replace" ? "thay toàn bộ mắt ở frame đích" : "thay mắt cùng vị trí, giữ các mắt còn lại")
         : scope === "selected"
-          ? context.selectedMode === "clicked"
-            ? "thêm box đang chọn và giữ nguyên toàn bộ box cũ"
-            : "thêm box mới và giữ các box đang có"
+          ? "thay box trùng từ 90% IoU, nếu không trùng thì thêm box mới"
           : "thay bằng toàn bộ dữ liệu của frame nguồn";
       const directionText = state.eyeBulkDirection === "marked" ? "đã đánh dấu" :
         state.eyeBulkDirection === "after" ? "sau" : "trước";
@@ -3190,6 +3176,47 @@
     return !!a && !!b && JSON.stringify(a) === JSON.stringify(b);
   }
 
+  function bboxIntersectionOverUnion(left, right) {
+    if (!Array.isArray(left) || left.length < 4 || !Array.isArray(right) || right.length < 4) return 0;
+    const a = left.slice(0, 4).map(Number);
+    const b = right.slice(0, 4).map(Number);
+    if (!a.every(Number.isFinite) || !b.every(Number.isFinite)) return 0;
+    const ax1 = Math.min(a[0], a[2]);
+    const ay1 = Math.min(a[1], a[3]);
+    const ax2 = Math.max(a[0], a[2]);
+    const ay2 = Math.max(a[1], a[3]);
+    const bx1 = Math.min(b[0], b[2]);
+    const by1 = Math.min(b[1], b[3]);
+    const bx2 = Math.max(b[0], b[2]);
+    const by2 = Math.max(b[1], b[3]);
+    const intersection = Math.max(0, Math.min(ax2, bx2) - Math.max(ax1, bx1)) *
+      Math.max(0, Math.min(ay2, by2) - Math.max(ay1, by1));
+    const union = (ax2 - ax1) * (ay2 - ay1) + (bx2 - bx1) * (by2 - by1) - intersection;
+    return union > 0 ? intersection / union : 0;
+  }
+
+  function mergeCopiedGenericBbox(targetItems, sourceItem) {
+    const nextItems = cloneGenericItems(targetItems);
+    const added = cloneGenericItems([sourceItem])[0];
+    if (!added) return nextItems;
+    if (!Array.isArray(added.box)) {
+      if (!nextItems.some((item) => sameGenericItem(item, added))) nextItems.push(added);
+      return nextItems;
+    }
+    let matchIndex = -1;
+    let matchIou = BBOX_OVERLAP_IOU_THRESHOLD;
+    nextItems.forEach((item, index) => {
+      const iou = bboxIntersectionOverUnion(item?.box, added.box);
+      if (iou >= matchIou) {
+        matchIndex = index;
+        matchIou = iou;
+      }
+    });
+    if (matchIndex >= 0) nextItems[matchIndex] = added;
+    else nextItems.push(added);
+    return nextItems;
+  }
+
   function eyeCenterX(item) {
     const points = item?.pts?.filter((point) => Array.isArray(point));
     return points?.length ? points.reduce((sum, point) => sum + point[0], 0) / points.length : Infinity;
@@ -3351,11 +3378,8 @@
         if (operationMode) {
           nextItems = applyQuickOperationToItems(currentItems, operation);
         } else if (scope === "selected") {
-          nextItems = cloneGenericItems(currentItems);
           const added = cloneGenericItems(sourceItems)[0];
-          if (added && context.selectedMode === "clicked") {
-            nextItems.push(added);
-          } else if (added && !nextItems.some((item) => sameGenericItem(item, added))) nextItems.push(added);
+          nextItems = mergeCopiedGenericBbox(currentItems, added);
         } else {
           nextItems = cloneGenericItems(sourceItems);
         }

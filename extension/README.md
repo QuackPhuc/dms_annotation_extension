@@ -1,6 +1,6 @@
 # NOTA Labeling Organizer
 
-Phiên bản hiện tại: **1.6.8**.
+Phiên bản hiện tại: **1.6.9**.
 
 Popup có nút **Kiểm tra update**. Với bản cài từ Chrome Web Store, nút yêu cầu Chrome kiểm tra và cài bản Store mới. Với bản `Load unpacked`, hãy double-click `Install-NOTA-Updater.cmd` một lần. Từ phiên bản sau, nút **Update ngay** sẽ tự tải GitHub Release, kiểm tra SHA256, thay file và reload extension. Nếu file trên máy đã mới hơn runtime Chrome đang giữ, popup vẫn bắt buộc reload để nạp đúng phiên bản.
 
@@ -25,12 +25,12 @@ Extension này hỗ trợ seatbelt và eye 15pt trên màn hình **Labeling** c�
 - **1 Point SAM**: chuột trái chấm điểm cộng (+), chuột phải chấm điểm trừ (−). Khi có vùng xanh lá, nhấn **R** để thêm vùng đó vào mask. **F** đổi Done/In progress; **Space** chạy/dừng video. Khi dùng `N`/`M`, chuột phải vẫn khép polygon.
 - **K** ẩn/hiện mask seatbelt hoặc eye 15pt ngay cả khi frame đang **In progress**. Thao tác này chỉ đổi hiển thị, không xóa dữ liệu và không đổi trạng thái frame.
 - Với eye 15pt, `Ctrl+B` sao chép mắt đang chọn hoặc tất cả mắt sang các frame trước/sau trong cùng clip; frame Done được bỏ qua và frame Not checked được chuyển sang In progress sau khi lưu.
-- Với body, head, face, nose, mouth, eye, hand, cigarette, e-cigarette, phone, can, bottle và mask, `Ctrl+B` có hai lựa chọn: **Chỉ box mới thêm** sẽ chồng box vừa tạo và giữ các box đang có ở frame đích; **Toàn bộ box hiện tại** sẽ thay toàn bộ danh sách box ở frame đích bằng dữ liệu của frame nguồn. Face 7pt sao chép toàn bộ cụm điểm hiện tại.
+- Với body, head, face, nose, mouth, eye, hand, cigarette, e-cigarette, phone, can, bottle và mask, `Ctrl+B` có hai lựa chọn: **Chỉ box mới thêm** sẽ thay box trùng từ 90% IoU; nếu không trùng thì thêm box mới và giữ các box khác. **Toàn bộ box hiện tại** sẽ thay toàn bộ danh sách box ở frame đích bằng dữ liệu của frame nguồn. Face 7pt sao chép toàn bộ cụm điểm hiện tại.
 - Với các label dạng bbox ở trên, nhấn `N`, click góc đầu, di chuyển chuột mà không cần giữ nút rồi click góc đối diện để tạo box mới; `Shift + kéo` cũ đã được tắt. Nhấn `M` để vẽ vùng xóa màu đỏ giống seatbelt M: polygon có nền đỏ mờ và điểm đỏ, bấm chuột phải hoặc chạm lại điểm đầu để xóa mọi box nằm trong vùng, và vùng đỏ tiếp tục hiển thị cho đến khi nhấn `Esc`. Click trái một lần vào vùng trống chỉ bỏ chọn và không còn tạo các điểm nét đứt.
 - Khi đang di chuyển hoặc co giãn bbox, box được phép đi theo chuột vượt ra ngoài ảnh như CVAT. Khi thả chuột, phần bbox nằm ngoài ảnh bị cắt tại mép trái, phải, trên hoặc dưới; các cạnh vẫn còn trong ảnh giữ nguyên vị trí nên kích thước box được tính lại và có thể nhỏ hơn.
 - Khi ở label **body**, **hand** hoặc **eye box**: `X` xóa toàn bộ box trên frame (`Shift+X` xóa toàn bộ rồi sang frame sau), `1` xóa box bên trái, `2` xóa box bên phải, `C` lấy toàn bộ box từ frame vừa xem (`Shift+C` lấy box rồi sang frame sau), `Ctrl+C` / `Ctrl+V` copy và dán giữa các frame không liền nhau, `V` đánh dấu frame, `Ctrl+B` áp dụng thao tác gần nhất cho số frame, đến `end` hoặc các frame đã đánh dấu, và `Z` hoàn tác. Một lần `Z` hoàn tác toàn bộ một đợt hàng loạt.
 - Các phím thao tác trên hoạt động trực tiếp trên ảnh; bảng phím tắt nổi ở cuối màn hình đã được bỏ.
-- Với **body**, **hand** và **eye box** có nhiều box, click một box rồi nhấn `Ctrl+B` để thêm bản sao của riêng box đó vào mỗi frame đích; toàn bộ box cũ ở frame đích được giữ nguyên. `Ctrl+C` / `Ctrl+V` vẫn có thể dùng box đang chọn để thay box cùng vị trí trái/phải.
+- Với **body**, **hand** và **eye box** có nhiều box, click một box rồi nhấn `Ctrl+B` để sao chép riêng box đó. Nếu frame đích có box trùng từ 90% IoU thì box trùng được thay; nếu không thì box mới được thêm và các box khác được giữ nguyên. `Ctrl+C` / `Ctrl+V` với một box đã chọn cũng dùng quy tắc này.
 - Trên mọi label bbox, hai box có IoU từ 90% được phủ và viền đỏ; box nhỏ chỉ nằm trong một phần box lớn sẽ không bị cảnh báo. Góc phải phía trên ảnh luôn hiện `BBox: N` để kiểm tra số lượng. Cột tên part ở danh sách bên trái hiển thị thêm tổng số ảnh của part.
 - Với **body**, double-click ô giữa cạnh trên/phải/dưới/trái để chọn riêng cạnh đó, sau đó kéo. Cạnh gốc màu trắng vẫn hiển thị, cạnh mới màu xanh. `Ctrl+B` đặt cạnh tương ứng của mọi frame đích vào đúng tọa độ tuyệt đối của đường xanh; ba cạnh còn lại của từng body box giữ nguyên.
 - Kéo vùng trống trong khung nét đứt để di chuyển cả 15 điểm; giữ `Ctrl` và kéo để xoay cả mắt quanh tâm. Kéo ô vuông trên cạnh/góc để co giãn cả cụm mắt; kéo trực tiếp một điểm vẫn chỉ sửa điểm đó.

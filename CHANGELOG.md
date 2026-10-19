@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.9 - 2026-10-19
+
+- Khi sao chép riêng một bbox bằng `Ctrl+B` hoặc `Ctrl+C` / `Ctrl+V`, box đích trùng từ 90% IoU được thay bằng box nguồn; nếu không có box trùng thì thêm box mới và giữ nguyên các box khác.
+
 ## 1.6.8 - 2026-10-19
 
 - Sửa `Ctrl+B` sau khi vẽ vùng xóa `M` cho hand và eye box: luôn mở chế độ xóa hàng loạt, kể cả khi khép vùng bằng cách click lại điểm đầu hoặc vùng nguồn không chứa box.
