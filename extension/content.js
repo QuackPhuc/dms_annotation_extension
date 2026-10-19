@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.6.4";
+  const VERSION = "1.6.5";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";
@@ -183,6 +183,25 @@
       #labList .nl-organized > .nl-clips {
         flex: 1;
         min-width: 0;
+      }
+      #labList .nl-organized > .vlab { position: relative; }
+      #labList .nl-part-total {
+        position: sticky;
+        top: 4px;
+        display: inline-flex;
+        align-items: center;
+        margin-top: 7px;
+        padding: 5px 2px;
+        border: 1px solid #397a9f;
+        border-radius: 4px;
+        color: #d9f3ff;
+        background: #17384c;
+        font-size: 10px;
+        font-weight: 750;
+        line-height: 1;
+        white-space: nowrap;
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
       }
       #labList > .grp[hidden] { display: none !important; }
       #labList .nl-clip {
@@ -566,6 +585,75 @@
     }
   }
 
+  function drawBboxOverlapWarnings() {
+    const canvas = document.getElementById("view");
+    if (!canvas) return;
+    if (!bboxLabelingReady() || typeof S === "undefined" || S.showAl === false ||
+        typeof ED === "undefined" || !Array.isArray(ED.items) || typeof ctx === "undefined") {
+      delete canvas.dataset.nlBboxCount;
+      delete canvas.dataset.nlBboxOverlap;
+      return;
+    }
+
+    const boxes = ED.items.map((item, index) => {
+      if (!Array.isArray(item?.box) || item.box.length < 4) return null;
+      const values = item.box.slice(0, 4).map(Number);
+      if (!values.every(Number.isFinite)) return null;
+      return {
+        index,
+        box: [Math.min(values[0], values[2]), Math.min(values[1], values[3]),
+          Math.max(values[0], values[2]), Math.max(values[1], values[3])]
+      };
+    }).filter(Boolean);
+    const overlapping = new Set();
+    for (let left = 0; left < boxes.length; left += 1) {
+      for (let right = left + 1; right < boxes.length; right += 1) {
+        const a = boxes[left].box;
+        const b = boxes[right].box;
+        if (Math.min(a[2], b[2]) > Math.max(a[0], b[0]) &&
+            Math.min(a[3], b[3]) > Math.max(a[1], b[1])) {
+          overlapping.add(boxes[left].index);
+          overlapping.add(boxes[right].index);
+        }
+      }
+    }
+
+    canvas.dataset.nlBboxCount = String(boxes.length);
+    canvas.dataset.nlBboxOverlap = String(overlapping.size);
+    const scale = canvas.width / (Number(S.sess?.src_w) || canvas.width || 1);
+    const rect = canvas.getBoundingClientRect();
+    const k = typeof pxK === "function" ? pxK() : canvas.width / (rect.width || canvas.width || 1);
+    ctx.save();
+    ctx.setLineDash([]);
+    for (const entry of boxes) {
+      if (!overlapping.has(entry.index)) continue;
+      const [x1, y1, x2, y2] = entry.box.map((value) => value * scale);
+      ctx.fillStyle = "rgba(255, 38, 64, .16)";
+      ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+      ctx.strokeStyle = "#ff263f";
+      ctx.lineWidth = 3 * k;
+      ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+    }
+
+    const text = `BBox: ${boxes.length}`;
+    ctx.font = `700 ${Math.round(14 * k)}px Consolas, monospace`;
+    ctx.textBaseline = "top";
+    const paddingX = 8 * k;
+    const paddingY = 5 * k;
+    const width = ctx.measureText(text).width + paddingX * 2;
+    const height = 14 * k + paddingY * 2;
+    const x = Math.max(4 * k, canvas.width - width - 8 * k);
+    const y = 8 * k;
+    ctx.fillStyle = overlapping.size ? "rgba(176, 0, 28, .92)" : "rgba(18, 24, 32, .86)";
+    ctx.fillRect(x, y, width, height);
+    ctx.strokeStyle = overlapping.size ? "#ff5268" : "#70c8ff";
+    ctx.lineWidth = 1.5 * k;
+    ctx.strokeRect(x, y, width, height);
+    ctx.fillStyle = "#fff";
+    ctx.fillText(text, x + paddingX, y + paddingY);
+    ctx.restore();
+  }
+
   function ensureLabelVisibility() {
     if (state.labelVisibilityInstalled || typeof edDraw !== "function") return;
     const nativeDraw = edDraw;
@@ -591,6 +679,7 @@
         if (bboxDelete && ED.key === polygonKey) ED.poly = polygon;
       }
       drawBboxDeletePolygon();
+      drawBboxOverlapWarnings();
       drawBodyEdgePatch();
       return result;
     };
@@ -1304,6 +1393,12 @@
       buckets.get(no).push(li);
     }
     if (!buckets.size) return;
+
+    const partTotal = document.createElement("span");
+    partTotal.className = "nl-part-total";
+    partTotal.textContent = `${Array.from(buckets.values()).reduce((sum, items) => sum + items.length, 0)} ảnh`;
+    partTotal.title = `Tổng số ảnh của part ${partName}`;
+    label.appendChild(partTotal);
 
     // Move the large native list off the live document before redistributing
     // its rows. This avoids thousands of connected-DOM mutation/layout steps.
@@ -2560,7 +2655,7 @@
         ? (writeMode === "replace" ? "thay toàn bộ mắt ở frame đích" : "thay mắt cùng vị trí, giữ các mắt còn lại")
         : scope === "selected"
           ? context.selectedMode === "clicked"
-            ? "thay box cùng vị trí trái/phải và giữ các box còn lại"
+            ? "thêm box đang chọn và giữ nguyên toàn bộ box cũ"
             : "thêm box mới và giữ các box đang có"
           : "thay bằng toàn bộ dữ liệu của frame nguồn";
       const directionText = state.eyeBulkDirection === "marked" ? "đã đánh dấu" :
@@ -3234,13 +3329,10 @@
         if (operationMode) {
           nextItems = applyQuickOperationToItems(currentItems, operation);
         } else if (scope === "selected") {
-          nextItems = currentItems;
+          nextItems = cloneGenericItems(currentItems);
           const added = cloneGenericItems(sourceItems)[0];
           if (added && context.selectedMode === "clicked") {
-            const targetOrder = bboxHorizontalOrder(nextItems);
-            const target = targetOrder[Math.max(0, Number(context.selectedRank) || 0)];
-            if (target) nextItems[target.index] = added;
-            else nextItems.push(added);
+            nextItems.push(added);
           } else if (added && !nextItems.some((item) => sameGenericItem(item, added))) nextItems.push(added);
         } else {
           nextItems = cloneGenericItems(sourceItems);
@@ -3996,6 +4088,7 @@
           ul.appendChild(li);
         }
         clips.replaceWith(ul);
+        row.querySelector(":scope > .vlab .nl-part-total")?.remove();
         row.classList.remove("nl-organized");
         delete row.dataset.partName;
         row.hidden = false;

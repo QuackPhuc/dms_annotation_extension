@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.5 - 2026-10-19
+
+- `Ctrl+B` với **Chỉ box đang chọn** chuyển sang thêm box vào frame đích; không thay thế hoặc làm mất box cũ.
+- Cảnh báo trực quan các bbox chồng lấn bằng lớp phủ và viền đỏ; góc ảnh hiển thị tổng số bbox.
+- Hiển thị tổng số ảnh của từng part ngay trong cột tên part ở danh sách bên trái.
+
 ## 1.6.4 - 2026-10-19
 
 - Sửa trường hợp updater báo đã dùng bản mới nhất nhưng khi mở lại popup vẫn hiện phiên bản runtime cũ.
