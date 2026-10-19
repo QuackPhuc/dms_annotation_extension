@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.6.1";
+  const VERSION = "1.6.2";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";
@@ -429,10 +429,22 @@
         background: rgba(23, 26, 32, .96);
         box-shadow: 0 5px 18px rgba(0,0,0,.42);
         font-size: 11px;
-        pointer-events: none;
+        pointer-events: auto;
       }
       #nl-bbox-shortcuts[hidden] { display: none !important; }
-      #nl-bbox-shortcuts span { white-space: nowrap; }
+      #nl-bbox-shortcuts button {
+        min-height: 25px;
+        padding: 2px 6px;
+        border: 1px solid #4b5260;
+        border-radius: 5px;
+        color: #e9edf3;
+        background: #202630;
+        white-space: nowrap;
+        cursor: pointer;
+        font: inherit;
+      }
+      #nl-bbox-shortcuts button:hover { border-color: #b56cff; background: #343044; }
+      #nl-bbox-shortcuts button:active { transform: translateY(1px); }
       #nl-bbox-shortcuts kbd {
         display: inline-block;
         min-width: 16px;
@@ -445,7 +457,7 @@
         font: inherit;
         font-weight: 750;
       }
-      #nl-bbox-shortcuts .nl-body-edge-help { color: #65f29b; }
+      #nl-bbox-shortcuts .nl-body-edge-help { align-self: center; color: #65f29b; white-space: nowrap; }
       .nl-eye-group-hint {
         margin-top: 7px;
         padding: 7px 8px;
@@ -1161,8 +1173,31 @@
     const bar = document.createElement("div");
     bar.id = "nl-bbox-shortcuts";
     bar.hidden = true;
+    bar.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-bbox-command]");
+      if (!button || !bar.contains(button)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      runBboxShortcutCommand(button.dataset.bboxCommand);
+    });
     document.body.appendChild(bar);
     state.bboxShortcutBar = bar;
+  }
+
+  function runBboxShortcutCommand(command) {
+    if (!quickBboxReady() || state.operationBusy || anyBulkDialogOpen()) return;
+    const pair = S.labelSel === "hand" || S.labelSel === "eye";
+    if (command === "delete") deleteQuickBbox(pair ? "all" : "rank");
+    else if (command === "delete-next") deleteQuickBbox(pair ? "all" : "rank", true);
+    else if (command === "left") deleteQuickBbox("left");
+    else if (command === "right") deleteQuickBbox("right");
+    else if (command === "previous") copyPreviousQuickBbox(false);
+    else if (command === "previous-next") copyPreviousQuickBbox(true);
+    else if (command === "copy") copyQuickBboxToClipboard();
+    else if (command === "paste") pasteQuickBboxFromClipboard();
+    else if (command === "mark") toggleMarkedFrame();
+    else if (command === "bulk") openBulkDialog();
+    else if (command === "undo") undoQuickBbox();
   }
 
   function updateBboxShortcutBar() {
@@ -1174,12 +1209,16 @@
     }
     const pair = S.labelSel === "hand" || S.labelSel === "eye";
     bar.innerHTML = `${pair
-      ? "<span><kbd>X</kbd> xóa hết</span><span><kbd>1</kbd> trái</span><span><kbd>2</kbd> phải</span>"
-      : "<span><kbd>X</kbd> xóa box</span>"}
-      <span><kbd>Shift+X</kbd> xóa + frame sau</span>
-      <span><kbd>C</kbd> chép frame vừa xem</span><span><kbd>Shift+C</kbd> chép + frame sau</span>
-      <span><kbd>Ctrl+C/V</kbd> copy / dán</span><span><kbd>V</kbd> đánh dấu</span>
-      <span><kbd>Ctrl+B</kbd> hàng loạt</span><span><kbd>Z</kbd> hoàn tác</span>
+      ? '<button type="button" data-bbox-command="delete"><kbd>X</kbd> xóa hết</button><button type="button" data-bbox-command="left"><kbd>1</kbd> trái</button><button type="button" data-bbox-command="right"><kbd>2</kbd> phải</button>'
+      : '<button type="button" data-bbox-command="delete"><kbd>X</kbd> xóa box</button>'}
+      <button type="button" data-bbox-command="delete-next"><kbd>Shift+X</kbd> xóa + frame sau</button>
+      <button type="button" data-bbox-command="previous"><kbd>C</kbd> chép frame vừa xem</button>
+      <button type="button" data-bbox-command="previous-next"><kbd>Shift+C</kbd> chép + frame sau</button>
+      <button type="button" data-bbox-command="copy"><kbd>Ctrl+C</kbd> copy</button>
+      <button type="button" data-bbox-command="paste"><kbd>Ctrl+V</kbd> dán</button>
+      <button type="button" data-bbox-command="mark"><kbd>V</kbd> đánh dấu</button>
+      <button type="button" data-bbox-command="bulk"><kbd>Ctrl+B</kbd> hàng loạt</button>
+      <button type="button" data-bbox-command="undo"><kbd>Z</kbd> hoàn tác</button>
       ${S.labelSel === "body" ? '<span class="nl-body-edge-help">Double-click giữa cạnh → kéo → Ctrl+B</span>' : ""}`;
     bar.hidden = false;
   }
@@ -2018,9 +2057,10 @@
       ...patch,
       type: "edge",
       source: patch.g,
+      value: next[patch.coord],
       rank: bboxHorizontalOrder(ED.items).findIndex((entry) => entry.index === patch.itemIndex)
     };
-    notify(`Đã chỉnh riêng cạnh ${patch.edge} ${patch.delta > 0 ? "+" : ""}${patch.delta.toFixed(1)} px · Ctrl+B để áp dụng`);
+    notify(`Đã đặt cạnh ${patch.edge} tại ${next[patch.coord].toFixed(1)} px · Ctrl+B để áp dụng đúng vị trí này`);
   }
 
   function drawBodyEdgePatch() {
@@ -2630,7 +2670,7 @@
       const actionText = operation?.type === "delete"
         ? `Xóa ${operation.selector === "all" ? "toàn bộ box" : operation.selector === "left" ? "box trái" : operation.selector === "right" ? "box phải" : operation.selector === "region" ? "box trong vùng M" : "box cùng thứ tự"}`
         : operation?.type === "edge"
-          ? `Dịch riêng cạnh ${operation.edge} ${operation.delta > 0 ? "+" : ""}${Number(operation.delta).toFixed(1)} px`
+          ? `Đặt cạnh ${operation.edge} tại ${Number(operation.value).toFixed(1)} px`
           : `Sao chép ${sourceCount} ${eyeMode ? "cụm mắt" : boxMode ? "box" : "cụm face 7pt"}`;
       preview.textContent = `${actionText} trên ${picked.targets.length} frame ${directionText}` +
         (operationMode ? " · giữ nguyên các box/cạnh còn lại" : ` · ${writeText}`) +
@@ -3247,7 +3287,7 @@
       const target = order[rank] ? next[order[rank].index] : null;
       if (!Array.isArray(target?.box)) return next;
       const coord = Number(operation.coord);
-      target.box[coord] += Number(operation.delta) || 0;
+      target.box[coord] = Number(operation.value);
       const width = Number(S.sess?.src_w) || 0;
       const height = Number(S.sess?.src_h) || 0;
       if (coord === 0) target.box[0] = Math.max(0, Math.min(target.box[2] - 1, target.box[0]));

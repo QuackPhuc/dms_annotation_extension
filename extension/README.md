@@ -1,6 +1,6 @@
 # NOTA Labeling Organizer
 
-Phiên bản hiện tại: **1.6.1**.
+Phiên bản hiện tại: **1.6.2**.
 
 Popup có nút **Kiểm tra update**. Với bản cài từ Chrome Web Store, nút yêu cầu Chrome kiểm tra và cài bản Store mới. Với bản `Load unpacked`, hãy double-click `Install-NOTA-Updater.cmd` một lần. Từ phiên bản sau, nút **Update ngay** sẽ tự tải GitHub Release, kiểm tra SHA256, thay file và reload extension.
 
@@ -28,10 +28,10 @@ Extension này hỗ trợ seatbelt và eye 15pt trên màn hình **Labeling** c�
 - Với body, head, face, nose, mouth, eye, hand, cigarette, e-cigarette, phone, can, bottle và mask, `Ctrl+B` có hai lựa chọn: **Chỉ box mới thêm** sẽ chồng box vừa tạo và giữ các box đang có ở frame đích; **Toàn bộ box hiện tại** sẽ thay toàn bộ danh sách box ở frame đích bằng dữ liệu của frame nguồn. Face 7pt sao chép toàn bộ cụm điểm hiện tại.
 - Với các label dạng bbox ở trên, nhấn `N`, click góc đầu, di chuyển chuột mà không cần giữ nút rồi click góc đối diện để tạo box mới; `Shift + kéo` cũ đã được tắt. Nhấn `M` để vẽ vùng xóa màu đỏ giống seatbelt M: polygon có nền đỏ mờ và điểm đỏ, bấm chuột phải hoặc chạm lại điểm đầu để xóa mọi box nằm trong vùng, và vùng đỏ tiếp tục hiển thị cho đến khi nhấn `Esc`. Click trái một lần vào vùng trống chỉ bỏ chọn và không còn tạo các điểm nét đứt.
 - Khi đang di chuyển hoặc co giãn bbox, box được phép đi theo chuột vượt ra ngoài ảnh như CVAT. Khi thả chuột, phần bbox nằm ngoài ảnh bị cắt tại mép trái, phải, trên hoặc dưới; các cạnh vẫn còn trong ảnh giữ nguyên vị trí nên kích thước box được tính lại và có thể nhỏ hơn.
-- Khi ở label **body**, **hand** hoặc **eye box**, thanh phím tắt luôn hiện ở cuối màn hình. `X` xóa nhanh (`Shift+X` xóa rồi sang frame sau), `C` chép box từ frame vừa xem (`Shift+C` chép rồi sang frame sau), `Ctrl+C` / `Ctrl+V` copy và dán giữa các frame không liền nhau, `V` đánh dấu frame, `Ctrl+B` áp dụng thao tác gần nhất cho số frame, đến `end` hoặc các frame đã đánh dấu, và `Z` hoàn tác. Một lần `Z` hoàn tác toàn bộ một đợt hàng loạt.
+- Khi ở label **body**, **hand** hoặc **eye box**, thanh thao tác luôn hiện ở cuối màn hình. Có thể click trực tiếp từng nút hoặc dùng phím: `X` xóa nhanh (`Shift+X` xóa rồi sang frame sau), `C` chép box từ frame vừa xem (`Shift+C` chép rồi sang frame sau), `Ctrl+C` / `Ctrl+V` copy và dán giữa các frame không liền nhau, `V` đánh dấu frame, `Ctrl+B` áp dụng thao tác gần nhất cho số frame, đến `end` hoặc các frame đã đánh dấu, và `Z` hoàn tác. Một lần `Z` hoàn tác toàn bộ một đợt hàng loạt.
 - Với **hand** và **eye box**, `X` xóa toàn bộ box trên frame, `1` xóa box bên trái và `2` xóa box bên phải. Với **body**, một box được xóa ngay; nếu có nhiều box thì rê chuột lên box cần xóa rồi nhấn `X`.
 - Với **body**, **hand** và **eye box** có nhiều box, click một box rồi nhấn `Ctrl+B` để chỉ sao chép box đó. Ở mỗi frame đích, box cùng thứ tự trái/phải được thay thế và các box còn lại được giữ nguyên. `Ctrl+C` / `Ctrl+V` cũng dùng box đang chọn theo cùng quy tắc.
-- Với **body**, double-click ô giữa cạnh trên/phải/dưới/trái để chọn riêng cạnh đó, sau đó kéo. Cạnh gốc màu trắng vẫn hiển thị, cạnh mới màu xanh. `Ctrl+B` chỉ truyền độ dịch chuyển của cạnh đã chọn sang frame đích; ba cạnh còn lại của từng body box giữ nguyên.
+- Với **body**, double-click ô giữa cạnh trên/phải/dưới/trái để chọn riêng cạnh đó, sau đó kéo. Cạnh gốc màu trắng vẫn hiển thị, cạnh mới màu xanh. `Ctrl+B` đặt cạnh tương ứng của mọi frame đích vào đúng tọa độ tuyệt đối của đường xanh; ba cạnh còn lại của từng body box giữ nguyên.
 - Kéo vùng trống trong khung nét đứt để di chuyển cả 15 điểm; giữ `Ctrl` và kéo để xoay cả mắt quanh tâm. Kéo ô vuông trên cạnh/góc để co giãn cả cụm mắt; kéo trực tiếp một điểm vẫn chỉ sửa điểm đó.
 - Giữ khung nét đứt của SAM3 khi chuyển frame và quay lại. Frame chưa mở trong cùng clip dùng khung hiện tại; frame đã chỉnh khung riêng vẫn nhớ khung của nó. Khung không tự co lại theo đoạn mask nhỏ vừa thêm.
 - `Z` hoàn tác điểm vừa chấm hoặc thao tác sửa mask gần nhất ở frame hiện tại. Với body/hand/eye box, `Z` hoàn tác thao tác bbox gần nhất và khôi phục toàn bộ các frame nếu thao tác đó là một đợt `Ctrl+B`.

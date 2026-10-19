@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.2 - 2026-10-19
+
+- Đổi chỉnh cạnh body hàng loạt sang tọa độ tuyệt đối: cạnh ở mọi frame đích được đặt đúng tại vị trí đường xanh của frame nguồn, không cộng/trừ delta pixel.
+- Đổi thanh chức năng body/hand/eye thành các nút thật có thể click; phím tắt bàn phím vẫn hoạt động song song.
+
 ## 1.6.1 - 2026-10-19
 
 - Body, hand và eye box có thể click chọn một box rồi dùng `Ctrl+B` để chỉ sao chép box đó sang các frame đích; box cùng thứ tự trái/phải được thay và các box còn lại được giữ nguyên.

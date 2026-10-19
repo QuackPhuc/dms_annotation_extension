@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "NOTA Labeling Organizer",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "description": "Gom frame theo clip; phím tắt body/hand/eye, chỉnh cạnh body và thao tác nhãn hàng loạt bằng Ctrl+B.",
   "icons": {
     "16": "icons/icon16.png",
