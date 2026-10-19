@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.6.10";
+  const VERSION = "1.6.11";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";
@@ -21,6 +21,7 @@
   const QUICK_BBOX_LABELS = new Set(["body", "hand", "eye"]);
   const BBOX_OVERLAP_IOU_THRESHOLD = 0.9;
   const BBOX_COPY_MATCH_IOU_THRESHOLD = 0.5;
+  const BBOX_COPY_MATCH_CONTAINMENT_THRESHOLD = 0.75;
 
   if (!ALLOWED_ORIGINS.has(location.origin) || document.getElementById(ROOT_ID)) return;
 
@@ -3196,6 +3197,25 @@
     return union > 0 ? intersection / union : 0;
   }
 
+  function bboxIntersectionOverSmaller(left, right) {
+    if (!Array.isArray(left) || left.length < 4 || !Array.isArray(right) || right.length < 4) return 0;
+    const a = left.slice(0, 4).map(Number);
+    const b = right.slice(0, 4).map(Number);
+    if (!a.every(Number.isFinite) || !b.every(Number.isFinite)) return 0;
+    const ax1 = Math.min(a[0], a[2]);
+    const ay1 = Math.min(a[1], a[3]);
+    const ax2 = Math.max(a[0], a[2]);
+    const ay2 = Math.max(a[1], a[3]);
+    const bx1 = Math.min(b[0], b[2]);
+    const by1 = Math.min(b[1], b[3]);
+    const bx2 = Math.max(b[0], b[2]);
+    const by2 = Math.max(b[1], b[3]);
+    const intersection = Math.max(0, Math.min(ax2, bx2) - Math.max(ax1, bx1)) *
+      Math.max(0, Math.min(ay2, by2) - Math.max(ay1, by1));
+    const smallerArea = Math.min((ax2 - ax1) * (ay2 - ay1), (bx2 - bx1) * (by2 - by1));
+    return smallerArea > 0 ? intersection / smallerArea : 0;
+  }
+
   function mergeCopiedGenericBbox(targetItems, sourceItem) {
     const nextItems = cloneGenericItems(targetItems);
     const added = cloneGenericItems([sourceItem])[0];
@@ -3204,18 +3224,20 @@
       if (!nextItems.some((item) => sameGenericItem(item, added))) nextItems.push(added);
       return nextItems;
     }
-    let matchIndex = -1;
-    let matchIou = BBOX_COPY_MATCH_IOU_THRESHOLD;
+    const matchingIndexes = [];
     nextItems.forEach((item, index) => {
       const iou = bboxIntersectionOverUnion(item?.box, added.box);
-      if (iou >= matchIou) {
-        matchIndex = index;
-        matchIou = iou;
-      }
+      const containment = bboxIntersectionOverSmaller(item?.box, added.box);
+      if (iou >= BBOX_COPY_MATCH_IOU_THRESHOLD ||
+          containment >= BBOX_COPY_MATCH_CONTAINMENT_THRESHOLD) matchingIndexes.push(index);
     });
-    if (matchIndex >= 0) nextItems[matchIndex] = added;
-    else nextItems.push(added);
-    return nextItems;
+    if (!matchingIndexes.length) {
+      nextItems.push(added);
+      return nextItems;
+    }
+    const matched = new Set(matchingIndexes);
+    const first = matchingIndexes[0];
+    return nextItems.flatMap((item, index) => index === first ? [added] : matched.has(index) ? [] : [item]);
   }
 
   function eyeCenterX(item) {

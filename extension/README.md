@@ -1,6 +1,6 @@
 # NOTA Labeling Organizer
 
-Phiên bản hiện tại: **1.6.10**.
+Phiên bản hiện tại: **1.6.11**.
 
 Popup có nút **Kiểm tra update**. Với bản cài từ Chrome Web Store, nút yêu cầu Chrome kiểm tra và cài bản Store mới. Với bản `Load unpacked`, hãy double-click `Install-NOTA-Updater.cmd` một lần. Từ phiên bản sau, nút **Update ngay** sẽ tự tải GitHub Release, kiểm tra SHA256, thay file và reload extension. Nếu file trên máy đã mới hơn runtime Chrome đang giữ, popup vẫn bắt buộc reload để nạp đúng phiên bản.
 

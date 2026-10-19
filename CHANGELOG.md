@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.11 - 2026-10-19
+
+- Nhận diện bbox cùng đối tượng bằng cả IoU và độ phủ của box nhỏ hơn. Khi copy, mọi box cũ trùng cùng vị trí được gộp và thay bằng đúng một box nguồn, kể cả khi box cũ cao hơn nhiều.
+
 ## 1.6.10 - 2026-10-19
 
 - Khi sao chép riêng bbox, nhận diện box cùng vị trí với ngưỡng IoU 50% để thay box cũ kể cả khi chiều cao khác nhau; ngưỡng cảnh báo bbox trùng màu đỏ vẫn giữ ở 90%.
