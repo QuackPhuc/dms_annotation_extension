@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6.0 - 2026-10-19
+
+- Thêm thanh phím tắt luôn hiển thị cho body, hand và eye box.
+- Thêm `X`, `Shift+X`, `1`, `2`, `C`, `Shift+C`, `Ctrl+C`, `Ctrl+V`, `V` và `Z` cho quy trình sửa bbox nhanh.
+- `Ctrl+B` hỗ trợ sao chép hoặc xóa theo số frame, đến cuối clip, hoặc các frame đã đánh dấu.
+- Body có chế độ double-click và kéo riêng một cạnh; cạnh cũ màu trắng, cạnh mới màu xanh và chỉ cạnh đó được truyền sang frame đích.
+- `Z` khôi phục toàn bộ một đợt bbox hàng loạt trong một lần.
+
 ## 1.5.9 - 2026-10-19
 
 - Sửa encoding của script cài NOTA Updater trên Windows PowerShell 5.1.

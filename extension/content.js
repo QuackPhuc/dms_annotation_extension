@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.5.9";
+  const VERSION = "1.6.0";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";
@@ -18,6 +18,7 @@
     "cigarette", "e_cigarette", "phone", "can", "bottle", "face_mask"
   ]);
   const OBJECT_BBOX_LABELS = new Set(["cigarette", "e_cigarette", "phone", "can", "bottle"]);
+  const QUICK_BBOX_LABELS = new Set(["body", "hand", "eye"]);
 
   if (!ALLOWED_ORIGINS.has(location.origin) || document.getElementById(ROOT_ID)) return;
 
@@ -40,7 +41,10 @@
     bulkDirection: "after",
     markedFrames: new Set(),
     markedScope: null,
+    bboxMarkedFrames: new Set(),
+    bboxMarkedScope: null,
     markedBadge: null,
+    bboxShortcutBar: null,
     manualMode: null,
     lastPatch: null,
     polygonDrawingInstalled: false,
@@ -70,6 +74,12 @@
     bboxMode: null,
     bboxCreateDraft: null,
     bboxDeleteRegion: null,
+    bboxClipboard: null,
+    bboxUndo: [],
+    quickFrameCurrent: null,
+    quickFramePrevious: null,
+    quickLastOperation: null,
+    bodyEdgePatch: null,
     renderingSidebar: false,
     sidebarScope: null,
     regionScope: null,
@@ -334,6 +344,8 @@
       .nl-bulk-dialog .nl-choice button.on,
       .nl-bulk-dialog .nl-actions .primary { border-color: #bd76ee; background: #7440a1; color: #fff; }
       .nl-bulk-dialog .nl-scope { display: grid; gap: 6px; padding: 9px; border: 1px solid #414754; border-radius: 6px; }
+      .nl-bulk-dialog .nl-scope[hidden], .nl-bulk-dialog .nl-label[hidden],
+      .nl-bulk-dialog .nl-choice button[hidden] { display: none !important; }
       .nl-bulk-dialog .nl-scope label { display: flex; gap: 7px; align-items: flex-start; font-size: 12px; }
       .nl-bulk-dialog .nl-scope label[hidden] { display: none !important; }
       .nl-bulk-dialog .nl-mask-only[hidden] { display: none !important; }
@@ -399,6 +411,41 @@
         pointer-events: auto;
       }
       #nl-marked-frames button[hidden] { display: none; }
+      #nl-bbox-shortcuts {
+        position: fixed;
+        z-index: 19;
+        left: 50%;
+        bottom: 8px;
+        transform: translateX(-50%);
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 5px;
+        max-width: calc(100vw - 28px);
+        padding: 6px 8px;
+        border: 1px solid #8751b3;
+        border-radius: 7px;
+        color: #e9edf3;
+        background: rgba(23, 26, 32, .96);
+        box-shadow: 0 5px 18px rgba(0,0,0,.42);
+        font-size: 11px;
+        pointer-events: none;
+      }
+      #nl-bbox-shortcuts[hidden] { display: none !important; }
+      #nl-bbox-shortcuts span { white-space: nowrap; }
+      #nl-bbox-shortcuts kbd {
+        display: inline-block;
+        min-width: 16px;
+        padding: 1px 4px;
+        border: 1px solid #687181;
+        border-radius: 4px;
+        color: #fff;
+        background: #2d3340;
+        text-align: center;
+        font: inherit;
+        font-weight: 750;
+      }
+      #nl-bbox-shortcuts .nl-body-edge-help { color: #65f29b; }
       .nl-eye-group-hint {
         margin-top: 7px;
         padding: 7px 8px;
@@ -493,6 +540,14 @@
     }
   }
 
+  function quickBboxReady() {
+    try {
+      return QUICK_BBOX_LABELS.has(S.labelSel) && pageLabelingReady(S.labelSel);
+    } catch (_) {
+      return false;
+    }
+  }
+
   function organizedNavigationRows() {
     if (!state.list) return [];
     const allRows = Array.from(state.list.querySelectorAll(".grp.nl-organized li[data-g]"));
@@ -572,6 +627,7 @@
         if (bboxDelete && ED.key === polygonKey) ED.poly = polygon;
       }
       drawBboxDeletePolygon();
+      drawBodyEdgePatch();
       return result;
     };
     state.labelVisibilityInstalled = true;
@@ -991,11 +1047,26 @@
       state.markedScope.label === S.labelSel);
   }
 
+  function bboxMarkedScopeMatches() {
+    return Boolean(state.bboxMarkedScope && quickBboxReady() &&
+      state.bboxMarkedScope.generation === S.gen && state.bboxMarkedScope.session === S.sess &&
+      state.bboxMarkedScope.label === S.labelSel);
+  }
+
   function syncMarkedScope() {
     if (!pageLabelingReady()) return false;
     if (!markedScopeMatches()) {
       state.markedFrames.clear();
       state.markedScope = { generation: S.gen, session: S.sess, label: S.labelSel };
+    }
+    return true;
+  }
+
+  function syncBboxMarkedScope() {
+    if (!quickBboxReady()) return false;
+    if (!bboxMarkedScopeMatches()) {
+      state.bboxMarkedFrames.clear();
+      state.bboxMarkedScope = { generation: S.gen, session: S.sess, label: S.labelSel };
     }
     return true;
   }
@@ -1010,58 +1081,70 @@
   }
 
   function updateMarkedUI() {
-    const ready = syncMarkedScope();
+    const bboxMode = quickBboxReady();
+    const ready = bboxMode ? syncBboxMarkedScope() : syncMarkedScope();
     if (!ready) {
       if (state.markedBadge) state.markedBadge.hidden = true;
       return;
     }
-    for (const g of Array.from(state.markedFrames)) {
-      if (frameState(g) !== "done") state.markedFrames.delete(g);
+    const selectedFrames = bboxMode ? state.bboxMarkedFrames : state.markedFrames;
+    if (!bboxMode) {
+      for (const g of Array.from(selectedFrames)) {
+        if (frameState(g) !== "done") selectedFrames.delete(g);
+      }
     }
     for (const li of state.list?.querySelectorAll("li[data-g]") || []) {
-      const selected = state.markedFrames.has(Number(li.dataset.g));
+      const selected = selectedFrames.has(Number(li.dataset.g));
       li.classList.toggle("nl-marked-frame", selected);
       let marker = li.querySelector(":scope > .nl-frame-mark");
       if (selected && !marker) {
         marker = document.createElement("span");
         marker.className = "nl-frame-mark";
-        marker.textContent = "✓ V";
+        marker.textContent = bboxMode ? "◆ V" : "✓ V";
         marker.title = "Frame đã được chọn bằng V";
         const name = li.querySelector(".name");
         if (name) name.before(marker); else li.prepend(marker);
       } else if (!selected) marker?.remove();
     }
     if (!state.markedBadge) return;
-    const count = state.markedFrames.size;
+    const count = selectedFrames.size;
     state.markedBadge.hidden = false;
     state.markedBadge.dataset.count = String(count);
-    state.markedBadge.querySelector("b").textContent = `Đã chọn ${count} · V`;
+    state.markedBadge.querySelector("b").textContent = bboxMode
+      ? `Đã đánh dấu ${count} frame ${S.labelSel} · V`
+      : `Đã chọn ${count} · V`;
     state.markedBadge.querySelector("button").hidden = count === 0;
     positionMarkedBadge();
   }
 
   function clearMarkedFrames() {
-    state.markedFrames.clear();
+    if (quickBboxReady()) state.bboxMarkedFrames.clear();
+    else state.markedFrames.clear();
     updateMarkedUI();
   }
 
   function toggleMarkedFrame() {
-    if (state.operationBusy || anyBulkDialogOpen() || !syncMarkedScope()) return;
+    const bboxMode = quickBboxReady();
+    if (state.operationBusy || anyBulkDialogOpen() ||
+        !(bboxMode ? syncBboxMarkedScope() : syncMarkedScope())) return;
     const g = Number(S.shownG);
     if (!Number.isInteger(g) || !S.lseq?.includes(g)) return;
-    if (state.markedFrames.has(g)) {
-      state.markedFrames.delete(g);
+    const selectedFrames = bboxMode ? state.bboxMarkedFrames : state.markedFrames;
+    if (selectedFrames.has(g)) {
+      selectedFrames.delete(g);
       updateMarkedUI();
-      notify(`Đã bỏ chọn frame hiện tại · còn ${state.markedFrames.size} frame`);
+      notify(`Đã bỏ đánh dấu frame hiện tại · còn ${selectedFrames.size} frame`);
       return;
     }
-    if (frameState(g) !== "done") {
+    if (!bboxMode && frameState(g) !== "done") {
       notify("Chỉ cần chọn frame đang Done; frame hiện tại đã có thể sửa");
       return;
     }
-    state.markedFrames.add(g);
+    selectedFrames.add(g);
     updateMarkedUI();
-    notify(`Đã chọn ${state.markedFrames.size} frame · Ctrl+B để chuyển sang In progress`);
+    notify(bboxMode
+      ? `Đã đánh dấu ${selectedFrames.size} frame · Ctrl+B để áp dụng thao tác bbox gần nhất`
+      : `Đã chọn ${selectedFrames.size} frame · Ctrl+B để chuyển sang In progress`);
   }
 
   function buildMarkedBadge() {
@@ -1072,6 +1155,33 @@
     badge.querySelector("button").addEventListener("click", clearMarkedFrames);
     document.body.appendChild(badge);
     state.markedBadge = badge;
+  }
+
+  function buildBboxShortcutBar() {
+    const bar = document.createElement("div");
+    bar.id = "nl-bbox-shortcuts";
+    bar.hidden = true;
+    document.body.appendChild(bar);
+    state.bboxShortcutBar = bar;
+  }
+
+  function updateBboxShortcutBar() {
+    const bar = state.bboxShortcutBar;
+    if (!bar) return;
+    if (!quickBboxReady()) {
+      bar.hidden = true;
+      return;
+    }
+    const pair = S.labelSel === "hand" || S.labelSel === "eye";
+    bar.innerHTML = `${pair
+      ? "<span><kbd>X</kbd> xóa hết</span><span><kbd>1</kbd> trái</span><span><kbd>2</kbd> phải</span>"
+      : "<span><kbd>X</kbd> xóa box</span>"}
+      <span><kbd>Shift+X</kbd> xóa + frame sau</span>
+      <span><kbd>C</kbd> chép frame vừa xem</span><span><kbd>Shift+C</kbd> chép + frame sau</span>
+      <span><kbd>Ctrl+C/V</kbd> copy / dán</span><span><kbd>V</kbd> đánh dấu</span>
+      <span><kbd>Ctrl+B</kbd> hàng loạt</span><span><kbd>Z</kbd> hoàn tác</span>
+      ${S.labelSel === "body" ? '<span class="nl-body-edge-help">Double-click giữa cạnh → kéo → Ctrl+B</span>' : ""}`;
+    bar.hidden = false;
   }
 
   function captureSidebarPosition() {
@@ -1620,8 +1730,296 @@
       label,
       labelName: genericLabelName(label),
       sourceItems,
-      selected
+      selected,
+      operation: quickOperationMatches() ? { ...state.quickLastOperation } : null
     };
+  }
+
+  function quickOperationMatches(operation = state.quickLastOperation) {
+    return Boolean(operation && quickBboxReady() && operation.generation === S.gen &&
+      operation.label === S.labelSel && Number(operation.source ?? operation.g) === Number(S.shownG));
+  }
+
+  function trackQuickFrameHistory() {
+    if (!quickBboxReady() || typeof ED === "undefined" || !Array.isArray(ED.items) ||
+        ED.key !== rvKey(S.shownG) || ED.lab !== S.labelSel) return;
+    const snapshot = {
+      generation: S.gen,
+      session: S.sess,
+      label: S.labelSel,
+      g: Number(S.shownG),
+      key: ED.key,
+      items: cloneGenericItems(ED.items)
+    };
+    const current = state.quickFrameCurrent;
+    if (current && (current.generation !== snapshot.generation || current.session !== snapshot.session ||
+        current.label !== snapshot.label || current.g !== snapshot.g)) {
+      state.quickFramePrevious = current;
+    }
+    state.quickFrameCurrent = snapshot;
+  }
+
+  function rememberBboxUndo(frames, remote = false) {
+    if (!quickBboxReady() || !frames?.length) return;
+    state.bboxUndo.push({
+      generation: S.gen,
+      session: S.sess,
+      label: S.labelSel,
+      remote,
+      frames: frames.map((frame) => ({ g: frame.g, items: cloneGenericItems(frame.items) }))
+    });
+    if (state.bboxUndo.length > 30) state.bboxUndo.splice(0, state.bboxUndo.length - 30);
+  }
+
+  function replaceCurrentBboxItems(items, operation, message) {
+    if (!quickBboxReady() || !bboxEditingAvailable()) return false;
+    const before = cloneGenericItems(ED.items);
+    rememberBboxUndo([{ g: Number(S.shownG), items: before }]);
+    ED.items.splice(0, ED.items.length, ...cloneGenericItems(items));
+    if (typeof edClearSel === "function") edClearSel();
+    else { ED.sel = -1; ED.selSet?.clear(); }
+    state.lastCreatedBox = null;
+    state.bodyEdgePatch = null;
+    if (operation) state.quickLastOperation = {
+      ...operation,
+      generation: S.gen,
+      session: S.sess,
+      label: S.labelSel,
+      source: Number(S.shownG)
+    };
+    try { if (typeof lsTouch === "function") lsTouch(); } catch (_) {}
+    if (typeof edSave === "function") edSave();
+    if (typeof edRepaint === "function") edRepaint();
+    trackQuickFrameHistory();
+    if (message) notify(message);
+    return true;
+  }
+
+  function bboxHorizontalOrder(items = ED.items) {
+    return items.map((item, index) => ({
+      index,
+      x: Array.isArray(item?.box) ? (Number(item.box[0]) + Number(item.box[2])) / 2 : Infinity
+    })).sort((left, right) => left.x - right.x || left.index - right.index);
+  }
+
+  function deleteQuickBbox(selector, advance = false) {
+    if (!quickBboxReady() || !bboxEditingAvailable() || !ED.items.length) {
+      notify("Frame hiện tại không có box có thể xóa");
+      return false;
+    }
+    const items = cloneGenericItems(ED.items);
+    const order = bboxHorizontalOrder(items);
+    let indexes = [];
+    let operation = { type: "delete", selector };
+    if (selector === "all") indexes = items.map((_, index) => index);
+    else if (selector === "left") indexes = order.length ? [order[0].index] : [];
+    else if (selector === "right") indexes = order.length ? [order[order.length - 1].index] : [];
+    else {
+      let index = Number.isInteger(ED.hover?.n) ? ED.hover.n : Number.isInteger(ED.sel) && ED.sel >= 0 ? ED.sel : -1;
+      if (items.length === 1) index = 0;
+      if (index < 0 || index >= items.length) {
+        notify("Có nhiều box: hãy rê chuột lên box cần xóa rồi nhấn X");
+        return false;
+      }
+      indexes = [index];
+      operation = { type: "delete", selector: "rank", rank: order.findIndex((entry) => entry.index === index) };
+    }
+    const removed = new Set(indexes);
+    const next = items.filter((_, index) => !removed.has(index));
+    const label = selector === "all" ? "toàn bộ box" : selector === "left" ? "box trái" : selector === "right" ? "box phải" : "box đã chọn";
+    const changed = replaceCurrentBboxItems(next, operation, `Đã xóa ${label} · Ctrl+B để xóa hàng loạt`);
+    if (changed && advance) setTimeout(() => navigateOrganizedFrames(1), 40);
+    return changed;
+  }
+
+  function copyPreviousQuickBbox(advance = false) {
+    if (!quickBboxReady() || !bboxEditingAvailable()) return false;
+    const previous = state.quickFramePrevious;
+    if (!previous || previous.generation !== S.gen || previous.session !== S.sess ||
+        previous.label !== S.labelSel || previous.g === Number(S.shownG)) {
+      notify("Chưa có frame vừa xem trước đó cùng label để sao chép");
+      return false;
+    }
+    const changed = replaceCurrentBboxItems(previous.items, { type: "copy" },
+      `Đã chép ${previous.items.length} box từ frame vừa xem`);
+    if (changed && advance) setTimeout(() => navigateOrganizedFrames(1), 40);
+    return changed;
+  }
+
+  function copyQuickBboxToClipboard() {
+    if (!quickBboxReady() || !Array.isArray(ED?.items)) return;
+    state.bboxClipboard = {
+      generation: S.gen,
+      session: S.sess,
+      label: S.labelSel,
+      items: cloneGenericItems(ED.items)
+    };
+    notify(`Đã copy ${ED.items.length} box ${S.labelSel} · chuyển frame rồi nhấn Ctrl+V`);
+  }
+
+  function pasteQuickBboxFromClipboard() {
+    const clipboard = state.bboxClipboard;
+    if (!quickBboxReady() || !bboxEditingAvailable()) return;
+    if (!clipboard || clipboard.session !== S.sess || clipboard.label !== S.labelSel) {
+      notify(`Clipboard chưa có box ${S.labelSel}`);
+      return;
+    }
+    replaceCurrentBboxItems(clipboard.items, { type: "copy" }, `Đã dán ${clipboard.items.length} box ${S.labelSel}`);
+  }
+
+  async function undoQuickBbox() {
+    if (state.operationBusy || !quickBboxReady()) return;
+    let index = state.bboxUndo.length - 1;
+    while (index >= 0) {
+      const entry = state.bboxUndo[index];
+      if (entry.generation === S.gen && entry.session === S.sess && entry.label === S.labelSel) break;
+      index -= 1;
+    }
+    if (index < 0) {
+      notify(`Không còn thao tác ${S.labelSel} để hoàn tác`);
+      return;
+    }
+    const [entry] = state.bboxUndo.splice(index, 1);
+    state.operationBusy = true;
+    try {
+      const currentG = Number(S.shownG);
+      const remoteFrames = [];
+      for (const frame of entry.frames) {
+        if (frame.g === currentG && bboxEditingAvailable()) {
+          ED.items.splice(0, ED.items.length, ...cloneGenericItems(frame.items));
+          if (typeof edClearSel === "function") edClearSel();
+          if (typeof edSave === "function") edSave();
+        } else remoteFrames.push(frame);
+      }
+      const result = await runQueue(remoteFrames, (frame) =>
+        saveFrameGenericItems(frame.g, entry.label, frame.items, entry.generation), null, 4);
+      if (result.error) throw result.error;
+      state.quickLastOperation = null;
+      state.bodyEdgePatch = null;
+      if (typeof fsRender === "function") fsRender();
+      if (typeof edRepaint === "function") edRepaint();
+      notify(`Đã hoàn tác ${entry.frames.length > 1 ? `cả đợt ${entry.frames.length} frame` : "thao tác gần nhất"}`);
+    } catch (error) {
+      state.bboxUndo.splice(index, 0, entry);
+      notify(`Không hoàn tác được: ${error.message}`);
+    } finally {
+      state.operationBusy = false;
+    }
+  }
+
+  function bodyEdgeGeometry(event) {
+    if (!pageLabelingReady("body") || !bboxEditingAvailable() || !ED.items.length) return null;
+    const point = bboxEventPoint(event);
+    const tolerance = 13 * point.sourceWidth / point.rect.width;
+    let best = null;
+    ED.items.forEach((item, itemIndex) => {
+      if (!Array.isArray(item?.box)) return;
+      const [x1, y1, x2, y2] = item.box.map(Number);
+      const handles = [
+        { edge: "top", coord: 1, point: [(x1 + x2) / 2, y1] },
+        { edge: "right", coord: 2, point: [x2, (y1 + y2) / 2] },
+        { edge: "bottom", coord: 3, point: [(x1 + x2) / 2, y2] },
+        { edge: "left", coord: 0, point: [x1, (y1 + y2) / 2] }
+      ];
+      for (const handle of handles) {
+        const distance = Math.hypot(point.sourcePoint[0] - handle.point[0], point.sourcePoint[1] - handle.point[1]);
+        if (distance <= tolerance && (!best || distance < best.distance)) {
+          best = { ...handle, itemIndex, distance, box: item.box.slice() };
+        }
+      }
+    });
+    return best;
+  }
+
+  function onBodyEdgeDoubleClick(event) {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+    const geometry = bodyEdgeGeometry(event);
+    if (!geometry) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    state.bodyEdgePatch = {
+      generation: S.gen,
+      session: S.sess,
+      label: "body",
+      g: Number(S.shownG),
+      key: ED.key,
+      itemIndex: geometry.itemIndex,
+      edge: geometry.edge,
+      coord: geometry.coord,
+      originalBox: geometry.box.slice(),
+      delta: 0,
+      ready: false
+    };
+    ED.sel = geometry.itemIndex;
+    ED.selSet?.clear();
+    if (typeof edRepaint === "function") edRepaint();
+    notify(`Đã chọn cạnh ${geometry.edge} màu xanh · kéo cạnh rồi nhấn Ctrl+B`);
+  }
+
+  function finalizeBodyEdgePatch() {
+    const patch = state.bodyEdgePatch;
+    if (!patch || patch.generation !== S.gen || patch.key !== ED?.key || patch.g !== Number(S.shownG) ||
+        !Array.isArray(ED.items?.[patch.itemIndex]?.box) || !ED.drag || ED.drag.n !== patch.itemIndex) return;
+    const box = ED.items[patch.itemIndex].box.slice();
+    const beforeItems = cloneGenericItems(ED.items);
+    beforeItems[patch.itemIndex].box = patch.originalBox.slice();
+    const next = patch.originalBox.slice();
+    next[patch.coord] = box[patch.coord];
+    const width = Number(S.sess?.src_w) || 0;
+    const height = Number(S.sess?.src_h) || 0;
+    if (patch.coord === 0) next[0] = Math.max(0, Math.min(next[2] - 1, next[0]));
+    if (patch.coord === 1) next[1] = Math.max(0, Math.min(next[3] - 1, next[1]));
+    if (patch.coord === 2) next[2] = Math.min(width, Math.max(next[0] + 1, next[2]));
+    if (patch.coord === 3) next[3] = Math.min(height, Math.max(next[1] + 1, next[3]));
+    patch.delta = next[patch.coord] - patch.originalBox[patch.coord];
+    if (Math.abs(patch.delta) < 0.05) return;
+    ED.items[patch.itemIndex].box = next;
+    patch.ready = true;
+    patch.currentBox = next.slice();
+    rememberBboxUndo([{ g: patch.g, items: beforeItems }]);
+    state.quickLastOperation = {
+      ...patch,
+      type: "edge",
+      source: patch.g,
+      rank: bboxHorizontalOrder(ED.items).findIndex((entry) => entry.index === patch.itemIndex)
+    };
+    notify(`Đã chỉnh riêng cạnh ${patch.edge} ${patch.delta > 0 ? "+" : ""}${patch.delta.toFixed(1)} px · Ctrl+B để áp dụng`);
+  }
+
+  function drawBodyEdgePatch() {
+    const patch = state.bodyEdgePatch;
+    if (!patch || patch.generation !== S.gen || patch.key !== ED?.key || patch.g !== Number(S.shownG) ||
+        !Array.isArray(ED.items?.[patch.itemIndex]?.box) || typeof ctx === "undefined") return;
+    const canvas = document.getElementById("view");
+    const scale = canvas.width / S.sess.src_w;
+    const unit = typeof pxK === "function" ? pxK() : canvas.width / canvas.getBoundingClientRect().width;
+    const original = patch.originalBox.map((value) => value * scale);
+    const current = ED.items[patch.itemIndex].box.map((value) => value * scale);
+    const line = (box, edge) => edge === "top" ? [box[0], box[1], box[2], box[1]] :
+      edge === "right" ? [box[2], box[1], box[2], box[3]] :
+      edge === "bottom" ? [box[0], box[3], box[2], box[3]] : [box[0], box[1], box[0], box[3]];
+    const oldLine = line(original, patch.edge);
+    const newLine = line(current, patch.edge);
+    ctx.save();
+    ctx.setLineDash([]);
+    ctx.lineWidth = 2 * unit;
+    ctx.strokeStyle = "#ffffff";
+    ctx.beginPath(); ctx.moveTo(oldLine[0], oldLine[1]); ctx.lineTo(oldLine[2], oldLine[3]); ctx.stroke();
+    ctx.strokeStyle = "#42f58d";
+    ctx.beginPath(); ctx.moveTo(newLine[0], newLine[1]); ctx.lineTo(newLine[2], newLine[3]); ctx.stroke();
+    if (patch.ready || Math.abs(newLine[0] - oldLine[0]) + Math.abs(newLine[1] - oldLine[1]) > .1) {
+      ctx.setLineDash([4 * unit, 3 * unit]);
+      ctx.beginPath();
+      ctx.moveTo(oldLine[0], oldLine[1]); ctx.lineTo(newLine[0], newLine[1]);
+      ctx.moveTo(oldLine[2], oldLine[3]); ctx.lineTo(newLine[2], newLine[3]);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    const mx = (newLine[0] + newLine[2]) / 2;
+    const my = (newLine[1] + newLine[3]) / 2;
+    ctx.fillStyle = "#42f58d";
+    ctx.fillRect(mx - 4 * unit, my - 4 * unit, 8 * unit, 8 * unit);
+    ctx.restore();
   }
 
   function trackCreatedBoxOnMouseUp() {
@@ -1769,6 +2167,12 @@
       Math.max(0, Math.min(width, x2)),
       Math.max(0, Math.min(height, y2))
     ];
+    if (quickBboxReady()) {
+      rememberBboxUndo([{
+        g: Number(S.shownG),
+        items: cloneGenericItems(ED.items.filter((item) => item !== draft.item))
+      }]);
+    }
     state.lastCreatedBox = {
       generation: S.gen,
       key: ED.key,
@@ -1803,12 +2207,25 @@
     const points = ED.poly.map((point) => point.slice());
     state.bboxDeleteRegion = { generation: S.gen, key: ED.key, label: S.labelSel, points };
     const removed = [];
+    const beforeItems = cloneGenericItems(ED.items);
     ED.items.forEach((item, index) => {
       try {
         if (Array.isArray(item?.box) && typeof boxInPoly === "function" && boxInPoly(item.box, points)) removed.push(index);
       } catch (_) {}
     });
     for (const index of removed.reverse()) ED.items.splice(index, 1);
+    if (removed.length && quickBboxReady()) {
+      rememberBboxUndo([{ g: Number(S.shownG), items: beforeItems }]);
+      state.quickLastOperation = {
+        type: "delete",
+        selector: "region",
+        region: points.map((point) => point.slice()),
+        generation: S.gen,
+        session: S.sess,
+        label: S.labelSel,
+        source: Number(S.shownG)
+      };
+    }
     ED.poly = [];
     if (typeof edClearSel === "function") edClearSel();
     else { ED.sel = -1; ED.selSet?.clear(); }
@@ -1822,6 +2239,12 @@
 
   function onBboxMouseDown(event) {
     if (!bboxLabelingReady() || event.button !== 0) return;
+    const bboxCanvas = document.getElementById("view");
+    const bboxStage = document.getElementById("stage");
+    if (state.bodyEdgePatch?.ready && (event.target === bboxCanvas || event.target === bboxStage)) {
+      state.bodyEdgePatch = null;
+      if (state.quickLastOperation?.type === "edge") state.quickLastOperation = null;
+    }
     if (state.bboxMode && !bboxEditingAvailable()) {
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -1977,6 +2400,14 @@
     // image. On release, crop the outside portion at the nearest image edge,
     // then let the native editor save the resulting smaller box.
     settleBboxInsideImage();
+    if (quickBboxReady() && ED.drag?.moved && !ED.drag.create && Array.isArray(ED.drag.box0) &&
+        !(state.bodyEdgePatch && state.bodyEdgePatch.key === ED.key &&
+          state.bodyEdgePatch.itemIndex === ED.drag.n)) {
+      const beforeItems = cloneGenericItems(ED.items);
+      if (beforeItems[ED.drag.n]) beforeItems[ED.drag.n].box = ED.drag.box0.slice();
+      rememberBboxUndo([{ g: Number(S.shownG), items: beforeItems }]);
+    }
+    finalizeBodyEdgePatch();
     trackCreatedBoxOnMouseUp();
     if (!bboxEditingAvailable() || state.bboxMode || !ED.marq) return;
     const marquee = ED.marq;
@@ -2002,6 +2433,7 @@
         <div class="nl-choice nl-directions">
           <button type="button" data-eye-direction="before">← Các frame trước</button>
           <button type="button" data-eye-direction="after">Các frame sau →</button>
+          <button type="button" data-eye-direction="marked" class="nl-marked-target" hidden>◆ Frame đã đánh dấu</button>
         </div>
 
         <span class="nl-label nl-source-label">Đối tượng nguồn</span>
@@ -2069,6 +2501,14 @@
   function selectedEyeBulkTargets() {
     const context = state.eyeBulkContext;
     if (!context) return { targets: [], error: "Không xác định được clip hiện tại." };
+    if (state.eyeBulkDirection === "marked") {
+      if (!bboxMarkedScopeMatches()) return { targets: [], error: "Danh sách frame đánh dấu không còn thuộc label hiện tại." };
+      const targets = Array.from(state.bboxMarkedFrames)
+        .filter((g) => Number.isInteger(g) && g !== context.source && S.lseq?.includes(g));
+      return targets.length
+        ? { targets, error: "" }
+        : { targets: [], error: "Chưa đánh dấu frame đích nào bằng phím V." };
+    }
     const raw = state.eyeBulkDialog.querySelector(".nl-count").value.trim().toLowerCase();
     const candidates = state.eyeBulkDirection === "before"
       ? context.frames.slice(0, context.sourceIndex).reverse()
@@ -2090,24 +2530,36 @@
       button.classList.toggle("on", button.dataset.eyeDirection === state.eyeBulkDirection);
     }
     const hasSelected = context.selected.length > 0;
+    const quickMode = QUICK_BBOX_LABELS.has(context.label);
+    const markedButton = dialog.querySelector(".nl-marked-target");
+    markedButton.hidden = !quickMode;
+    markedButton.textContent = `◆ Frame đã đánh dấu (${bboxMarkedScopeMatches() ? state.bboxMarkedFrames.size : 0})`;
+    if (!quickMode && state.eyeBulkDirection === "marked") state.eyeBulkDirection = "after";
+    dialog.querySelector(".nl-count").disabled = state.eyeBulkDirection === "marked";
     dialog.querySelector(".nl-eye-selected-option").hidden = !hasSelected;
     const checked = dialog.querySelector('input[name="nl-eye-scope"]:checked');
     if (!checked || (checked.value === "selected" && !hasSelected)) {
       dialog.querySelector(`input[name="nl-eye-scope"][value="${hasSelected ? "selected" : "all"}"]`).checked = true;
     }
+    const operation = context.operation;
+    const operationMode = operation?.type === "delete" || operation?.type === "edge";
     const scope = dialog.querySelector('input[name="nl-eye-scope"]:checked')?.value || "all";
-    const sourceCount = scope === "selected" ? context.selected.length : context.sourceItems.length;
+    const sourceCount = operationMode ? 1 : scope === "selected" ? context.selected.length : context.sourceItems.length;
     const writeMode = dialog.querySelector('input[name="nl-eye-write"]:checked')?.value || "merge";
     const eyeMode = context.label === "eye_lmk";
     const boxMode = !eyeMode && context.label !== "face_lmk";
-    dialog.querySelector("h2").textContent = `Sao chép ${context.labelName} theo clip`;
+    dialog.querySelector("h2").textContent = operation?.type === "delete"
+      ? `Xóa ${context.labelName} theo clip`
+      : operation?.type === "edge" ? `Chỉnh riêng cạnh ${operation.edge} của body` : `Sao chép ${context.labelName} theo clip`;
     dialog.querySelector(".nl-source-label").textContent = eyeMode ? "Đối tượng nguồn" : "Phần cần sao chép";
+    dialog.querySelector(".nl-source-label").hidden = operationMode;
+    dialog.querySelector(".nl-scope").hidden = operationMode;
     dialog.querySelector(".nl-item-selected-text").textContent = eyeMode ? "Chỉ mắt đang chọn" : "Chỉ box mới thêm";
     dialog.querySelector(".nl-item-all-text").textContent = eyeMode
       ? "Tất cả mắt của frame hiện tại"
       : boxMode ? "Toàn bộ box hiện tại" : "Toàn bộ face 7pt hiện tại";
-    dialog.querySelector(".nl-write-label").hidden = !eyeMode;
-    dialog.querySelector(".nl-write-options").hidden = !eyeMode;
+    dialog.querySelector(".nl-write-label").hidden = !eyeMode || operationMode;
+    dialog.querySelector(".nl-write-options").hidden = !eyeMode || operationMode;
     dialog.querySelector(".nl-item-merge-text").textContent = eyeMode
       ? "Thay mắt cùng vị trí và giữ các mắt còn lại"
       : "";
@@ -2126,8 +2578,15 @@
       const writeText = eyeMode
         ? (writeMode === "replace" ? "thay toàn bộ mắt ở frame đích" : "thay mắt cùng vị trí, giữ các mắt còn lại")
         : scope === "selected" ? "thêm box mới và giữ các box đang có" : "thay bằng toàn bộ dữ liệu của frame nguồn";
-      preview.textContent = `Sao chép ${sourceCount} ${eyeMode ? "cụm mắt" : boxMode ? "box" : "cụm face 7pt"} vào ${picked.targets.length} frame ` +
-        `${state.eyeBulkDirection === "after" ? "sau" : "trước"} · ${writeText}` +
+      const directionText = state.eyeBulkDirection === "marked" ? "đã đánh dấu" :
+        state.eyeBulkDirection === "after" ? "sau" : "trước";
+      const actionText = operation?.type === "delete"
+        ? `Xóa ${operation.selector === "all" ? "toàn bộ box" : operation.selector === "left" ? "box trái" : operation.selector === "right" ? "box phải" : operation.selector === "region" ? "box trong vùng M" : "box cùng thứ tự"}`
+        : operation?.type === "edge"
+          ? `Dịch riêng cạnh ${operation.edge} ${operation.delta > 0 ? "+" : ""}${Number(operation.delta).toFixed(1)} px`
+          : `Sao chép ${sourceCount} ${eyeMode ? "cụm mắt" : boxMode ? "box" : "cụm face 7pt"}`;
+      preview.textContent = `${actionText} trên ${picked.targets.length} frame ${directionText}` +
+        (operationMode ? " · giữ nguyên các box/cạnh còn lại" : ` · ${writeText}`) +
         (skipped ? ` · bỏ qua ${skipped} frame đã Done` : "") + ". Tối đa 4 request chạy song song.";
     }
     dialog.querySelector(".nl-apply").disabled = Boolean(picked.error) || !sourceCount || state.operationBusy;
@@ -2155,12 +2614,15 @@
 
   function openGenericBulkDialog() {
     if (state.operationBusy) return;
+    if (QUICK_BBOX_LABELS.has(S.labelSel)) syncBboxMarkedScope();
+    if (state.eyeBulkDirection === "marked" &&
+        (!bboxMarkedScopeMatches() || !state.bboxMarkedFrames.size)) state.eyeBulkDirection = "after";
     const context = currentGenericClipContext();
     if (!context) {
       notify("Hãy mở một frame thuộc clip trước khi sao chép");
       return;
     }
-    if (!context.sourceItems.length) {
+    if (!context.sourceItems.length && !context.operation) {
       notify(`Frame hiện tại không có ${context.labelName} để sao chép`);
       return;
     }
@@ -2717,6 +3179,38 @@
     else applyGenericBulkCopy();
   }
 
+  function applyQuickOperationToItems(items, operation) {
+    const next = cloneGenericItems(items);
+    const order = bboxHorizontalOrder(next);
+    if (operation.type === "delete") {
+      if (operation.selector === "all") return [];
+      if (operation.selector === "region" && Array.isArray(operation.region)) {
+        return next.filter((item) => {
+          try { return !(Array.isArray(item?.box) && typeof boxInPoly === "function" && boxInPoly(item.box, operation.region)); }
+          catch (_) { return true; }
+        });
+      }
+      let rank = operation.selector === "left" ? 0 : operation.selector === "right" ? order.length - 1 : operation.rank;
+      rank = Math.max(0, Math.min(order.length - 1, Number(rank)));
+      if (order[rank]) next.splice(order[rank].index, 1);
+      return next;
+    }
+    if (operation.type === "edge") {
+      const rank = Math.max(0, Math.min(order.length - 1, Number(operation.rank) || 0));
+      const target = order[rank] ? next[order[rank].index] : null;
+      if (!Array.isArray(target?.box)) return next;
+      const coord = Number(operation.coord);
+      target.box[coord] += Number(operation.delta) || 0;
+      const width = Number(S.sess?.src_w) || 0;
+      const height = Number(S.sess?.src_h) || 0;
+      if (coord === 0) target.box[0] = Math.max(0, Math.min(target.box[2] - 1, target.box[0]));
+      if (coord === 1) target.box[1] = Math.max(0, Math.min(target.box[3] - 1, target.box[1]));
+      if (coord === 2) target.box[2] = Math.min(width, Math.max(target.box[0] + 1, target.box[2]));
+      if (coord === 3) target.box[3] = Math.min(height, Math.max(target.box[1] + 1, target.box[3]));
+    }
+    return next;
+  }
+
   async function applyGenericBulkCopy() {
     const context = state.eyeBulkContext;
     if (state.operationBusy || !context || !GENERIC_COPY_LABELS.has(context.label) ||
@@ -2735,20 +3229,27 @@
     const preview = dialog.querySelector(".nl-preview");
     const apply = dialog.querySelector(".nl-apply");
     const scope = dialog.querySelector('input[name="nl-eye-scope"]:checked')?.value || "all";
+    const operation = context.operation;
+    const operationMode = operation?.type === "delete" || operation?.type === "edge";
     const sourceItems = scope === "selected"
       ? context.selected.map((index) => context.sourceItems[index]).filter(Boolean)
       : context.sourceItems;
-    if (!sourceItems.length) {
+    if (!sourceItems.length && !operationMode) {
       updateEyeBulkDialog();
       return;
     }
     state.operationBusy = true;
     apply.disabled = true;
     try {
+      const undoFrames = [];
       const result = await runQueue(targets, async (g) => {
         let nextItems;
-        if (scope === "selected") {
-          nextItems = await getFrameGenericItems(g, context.label, context.generation);
+        const currentItems = await getFrameGenericItems(g, context.label, context.generation);
+        undoFrames.push({ g, items: currentItems });
+        if (operationMode) {
+          nextItems = applyQuickOperationToItems(currentItems, operation);
+        } else if (scope === "selected") {
+          nextItems = currentItems;
           const added = cloneGenericItems(sourceItems)[0];
           if (added && !nextItems.some((item) => sameGenericItem(item, added))) nextItems.push(added);
         } else {
@@ -2761,9 +3262,14 @@
       }, 4);
       if (typeof fsRender === "function" && S.gen === context.generation) fsRender();
       if (typeof paint === "function" && S.gen === context.generation) paint();
+      if (QUICK_BBOX_LABELS.has(context.label) && undoFrames.length) rememberBboxUndo(undoFrames, true);
       if (result.error) throw new Error(`đã lưu ${result.completed}/${targets.length}: ${result.error.message}`);
       dialog.close();
-      notify(`Đã sao chép ${sourceItems.length} đối tượng ${context.labelName} vào ${targets.length} frame`);
+      notify(operation?.type === "delete"
+        ? `Đã xóa box ${context.labelName} trên ${targets.length} frame`
+        : operation?.type === "edge"
+          ? `Đã chỉnh riêng cạnh ${operation.edge} của body trên ${targets.length} frame`
+          : `Đã sao chép ${sourceItems.length} đối tượng ${context.labelName} vào ${targets.length} frame`);
     } catch (error) {
       preview.classList.add("err");
       preview.textContent = `Dừng vì lỗi: ${error.message}`;
@@ -3371,10 +3877,52 @@
       return;
     }
     if (event.code === "KeyZ" && !event.altKey && !event.shiftKey && !typing &&
+        !anyBulkDialogOpen() && quickBboxReady()) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (!event.repeat) undoQuickBbox();
+      return;
+    }
+    if (event.code === "KeyZ" && !event.altKey && !event.shiftKey && !typing &&
         !anyBulkDialogOpen() && pageLabelingReady("seatbelt")) {
       event.preventDefault();
       event.stopImmediatePropagation();
       if (!event.repeat) undoSeatbelt();
+      return;
+    }
+    if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && !typing &&
+        !anyBulkDialogOpen() && quickBboxReady() && (event.code === "KeyC" || event.code === "KeyV")) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (!event.repeat) {
+        if (event.code === "KeyC") copyQuickBboxToClipboard();
+        else pasteQuickBboxFromClipboard();
+      }
+      return;
+    }
+    if (!event.ctrlKey && !event.metaKey && !event.altKey && !typing && !anyBulkDialogOpen() &&
+        quickBboxReady() && event.code === "KeyX") {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (!event.repeat) {
+        const selector = S.labelSel === "hand" || S.labelSel === "eye" ? "all" : "rank";
+        deleteQuickBbox(selector, event.shiftKey);
+      }
+      return;
+    }
+    if (!event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey && !typing &&
+        !anyBulkDialogOpen() && quickBboxReady() && (event.code === "Digit1" || event.code === "Numpad1" ||
+          event.code === "Digit2" || event.code === "Numpad2") && (S.labelSel === "hand" || S.labelSel === "eye")) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (!event.repeat) deleteQuickBbox(event.code.endsWith("1") ? "left" : "right");
+      return;
+    }
+    if (!event.ctrlKey && !event.metaKey && !event.altKey && !typing && !anyBulkDialogOpen() &&
+        quickBboxReady() && event.code === "KeyC") {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (!event.repeat) copyPreviousQuickBbox(event.shiftKey);
       return;
     }
     if (event.code === "Escape" && (state.manualMode || state.lastPatch) && !typing) {
@@ -3517,6 +4065,7 @@
       state.sidebarScope = null;
       if (state.toolbar) state.toolbar.hidden = true;
       if (state.markedBadge) state.markedBadge.hidden = true;
+      if (state.bboxShortcutBar) state.bboxShortcutBar.hidden = true;
       if (state.manualMode || state.lastPatch) cancelManualMode();
       restoreNativeGroups();
       return;
@@ -3544,6 +4093,8 @@
       ensureCurrentClipOpen();
       applyFilter();
       updateMarkedUI();
+      updateBboxShortcutBar();
+      trackQuickFrameHistory();
       state.sidebarScope = typeof S !== "undefined" ? { generation: S.gen, label: S.labelSel } : null;
     } finally {
       // MutationObserver callbacks run after this function returns. Clear the
@@ -3568,6 +4119,7 @@
     state.toolbar = buildToolbar();
     state.list.before(state.toolbar);
     buildMarkedBadge();
+    buildBboxShortcutBar();
     ensureSidebarRendering();
     ensureStatusRendering();
     ensureOrganizedPlayback();
@@ -3594,6 +4146,7 @@
     window.addEventListener("mousedown", onBboxMouseDown, true);
     window.addEventListener("mousedown", onManualMouseDown, true);
     window.addEventListener("contextmenu", onViewContextMenu, true);
+    window.addEventListener("dblclick", onBodyEdgeDoubleClick, true);
 
     state.observer = new MutationObserver((mutations) => {
       if (state.applying) return;

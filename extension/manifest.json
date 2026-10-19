@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "NOTA Labeling Organizer",
-  "version": "1.5.9",
-  "description": "Gom frame theo clip; chỉnh bbox bằng N/M, seatbelt và sao chép mọi loại nhãn hàng loạt bằng Ctrl+B.",
+  "version": "1.6.0",
+  "description": "Gom frame theo clip; phím tắt body/hand/eye, chỉnh cạnh body và thao tác nhãn hàng loạt bằng Ctrl+B.",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
