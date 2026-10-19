@@ -15,10 +15,10 @@ $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 $extensionIds = New-Object System.Collections.Generic.HashSet[string] ([System.StringComparer]::OrdinalIgnoreCase)
 
 if (-not (Test-Path -LiteralPath (Join-Path $extensionRoot "manifest.json"))) {
-    throw "Không tìm thấy manifest trong $extensionRoot"
+    throw "Cannot find manifest in $extensionRoot"
 }
 if (-not (Test-Path -LiteralPath $sourceExe)) {
-    throw "Không tìm thấy NOTAUpdater.exe"
+    throw "Cannot find NOTAUpdater.exe"
 }
 
 if ($ExtensionId -match '^[a-p]{32}$') { [void]$extensionIds.Add($ExtensionId) }
@@ -39,7 +39,7 @@ if (Test-Path -LiteralPath $chromeUserData) {
     }
 }
 if ($extensionIds.Count -eq 0) {
-    throw "Không tìm thấy Extension ID. Hãy Load unpacked thư mục này trong Chrome trước, rồi chạy lại file cài updater."
+    throw "Cannot find the Extension ID. Load unpacked this folder in Chrome, then run the updater installer again."
 }
 $allowedOrigins = @($extensionIds | ForEach-Object { "chrome-extension://$_/" })
 

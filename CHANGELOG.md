@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.9 - 2026-10-19
+
+- Sửa encoding của script cài NOTA Updater trên Windows PowerShell 5.1.
+
 ## 1.5.8 - 2026-10-19
 
 - Thêm NOTA Updater cho Windows qua Chrome Native Messaging.

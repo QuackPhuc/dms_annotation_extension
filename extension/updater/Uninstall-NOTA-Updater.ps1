@@ -7,7 +7,7 @@ if (Test-Path -LiteralPath $registryPath) { Remove-Item -LiteralPath $registryPa
 if (Test-Path -LiteralPath $installRoot) {
     $resolved = [System.IO.Path]::GetFullPath($installRoot)
     $expected = [System.IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA "NOTA\LabelingUpdater"))
-    if ($resolved -ne $expected) { throw "Đường dẫn uninstall không hợp lệ: $resolved" }
+    if ($resolved -ne $expected) { throw "Invalid uninstall path: $resolved" }
     Remove-Item -LiteralPath $resolved -Recurse -Force
 }
-Write-Host "Đã gỡ NOTA Updater."
+Write-Host "NOTA Updater was removed."
