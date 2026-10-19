@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.12 - 2026-10-19
+
+- Không còn xóa nhầm body box lớn khi copy một box nhỏ nằm bên trong: điều kiện replace giờ kiểm tra thêm độ tương đồng chiều rộng và chiều cao, đồng thời vẫn gộp các bản sao thực sự trùng nhau.
+
 ## 1.6.11 - 2026-10-19
 
 - Nhận diện bbox cùng đối tượng bằng cả IoU và độ phủ của box nhỏ hơn. Khi copy, mọi box cũ trùng cùng vị trí được gộp và thay bằng đúng một box nguồn, kể cả khi box cũ cao hơn nhiều.

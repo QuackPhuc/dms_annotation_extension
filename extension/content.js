@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.6.11";
+  const VERSION = "1.6.12";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";
@@ -22,6 +22,7 @@
   const BBOX_OVERLAP_IOU_THRESHOLD = 0.9;
   const BBOX_COPY_MATCH_IOU_THRESHOLD = 0.5;
   const BBOX_COPY_MATCH_CONTAINMENT_THRESHOLD = 0.75;
+  const BBOX_COPY_MATCH_SIZE_THRESHOLD = 0.4;
 
   if (!ALLOWED_ORIGINS.has(location.origin) || document.getElementById(ROOT_ID)) return;
 
@@ -3216,6 +3217,20 @@
     return smallerArea > 0 ? intersection / smallerArea : 0;
   }
 
+  function bboxDimensionSimilarity(left, right) {
+    if (!Array.isArray(left) || left.length < 4 || !Array.isArray(right) || right.length < 4) return 0;
+    const a = left.slice(0, 4).map(Number);
+    const b = right.slice(0, 4).map(Number);
+    if (!a.every(Number.isFinite) || !b.every(Number.isFinite)) return 0;
+    const widthA = Math.abs(a[2] - a[0]);
+    const heightA = Math.abs(a[3] - a[1]);
+    const widthB = Math.abs(b[2] - b[0]);
+    const heightB = Math.abs(b[3] - b[1]);
+    if (!widthA || !heightA || !widthB || !heightB) return 0;
+    return Math.min(Math.min(widthA, widthB) / Math.max(widthA, widthB),
+      Math.min(heightA, heightB) / Math.max(heightA, heightB));
+  }
+
   function mergeCopiedGenericBbox(targetItems, sourceItem) {
     const nextItems = cloneGenericItems(targetItems);
     const added = cloneGenericItems([sourceItem])[0];
@@ -3228,8 +3243,10 @@
     nextItems.forEach((item, index) => {
       const iou = bboxIntersectionOverUnion(item?.box, added.box);
       const containment = bboxIntersectionOverSmaller(item?.box, added.box);
+      const sizeSimilarity = bboxDimensionSimilarity(item?.box, added.box);
       if (iou >= BBOX_COPY_MATCH_IOU_THRESHOLD ||
-          containment >= BBOX_COPY_MATCH_CONTAINMENT_THRESHOLD) matchingIndexes.push(index);
+          (containment >= BBOX_COPY_MATCH_CONTAINMENT_THRESHOLD &&
+            sizeSimilarity >= BBOX_COPY_MATCH_SIZE_THRESHOLD)) matchingIndexes.push(index);
     });
     if (!matchingIndexes.length) {
       nextItems.push(added);
