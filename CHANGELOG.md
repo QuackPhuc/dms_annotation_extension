@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.13 - 2026-10-19
+
+- Thêm `Install-NOTA-Updater.command` và native updater universal cho macOS Apple Silicon/Intel; người dùng MacBook có thể cài updater một lần rồi dùng nút **Update ngay** như Windows.
+- Trang hướng dẫn cài updater hiển thị riêng các bước Windows và macOS.
+
 ## 1.6.12 - 2026-10-19
 
 - Không còn xóa nhầm body box lớn khi copy một box nhỏ nằm bên trong: điều kiện replace giờ kiểm tra thêm độ tương đồng chiều rộng và chiều cao, đồng thời vẫn gộp các bản sao thực sự trùng nhau.

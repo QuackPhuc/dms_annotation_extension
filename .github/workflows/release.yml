@@ -2,6 +2,8 @@ name: Release extension
 
 on:
   push:
+    branches:
+      - "main"
     tags:
       - "v*"
 
@@ -10,12 +12,49 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Build universal macOS updater
+        shell: bash
+        run: |
+          mkdir -p build/macos extension/updater
+          xcrun swiftc -O -target arm64-apple-macosx11.0 native-updater/NOTAUpdater.swift -o build/macos/NOTAUpdater-arm64
+          xcrun swiftc -O -target x86_64-apple-macosx11.0 native-updater/NOTAUpdater.swift -o build/macos/NOTAUpdater-x86_64
+          lipo -create build/macos/NOTAUpdater-arm64 build/macos/NOTAUpdater-x86_64 \
+            -output build/macos/NOTAUpdater-macos
+          cp build/macos/NOTAUpdater-macos extension/updater/NOTAUpdater-macos
+          chmod 755 extension/updater/NOTAUpdater-macos extension/Install-NOTA-Updater.command \
+            extension/updater/Uninstall-NOTA-Updater.command
+          file extension/updater/NOTAUpdater-macos
+
+      - name: Test macOS native messaging protocol
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, struct, subprocess
+          root = pathlib.Path("build/macos")
+          (root / "config.json").write_text(json.dumps({
+              "extensionPath": str(pathlib.Path("extension").resolve()),
+              "allowedOrigins": ["chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/"],
+              "releaseApi": "https://api.github.com/repos/tanmainhat0502/dms_annotation_extension/releases/latest",
+          }), encoding="utf-8")
+          request = json.dumps({"action": "ping"}).encode()
+          process = subprocess.run(
+              [str(root / "NOTAUpdater-macos"), "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/"],
+              input=struct.pack("<I", len(request)) + request,
+              stdout=subprocess.PIPE,
+              check=True,
+          )
+          length = struct.unpack("<I", process.stdout[:4])[0]
+          response = json.loads(process.stdout[4:4 + length])
+          assert response == {"host": "ai.nota.labeling_updater", "ok": True, "status": "ready"}, response
+          PY
+
       - name: Verify tag matches manifest version
+        if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
         run: |
           VERSION=$(python -c 'import json; print(json.load(open("extension/manifest.json", encoding="utf-8"))["version"])')
@@ -25,6 +64,7 @@ jobs:
           }
 
       - name: Package extension
+        if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
         run: |
           ARCHIVE="NOTA_Labeling_Organizer_Extension_${GITHUB_REF_NAME}.zip"
@@ -32,6 +72,7 @@ jobs:
           zip -r "../${ARCHIVE}" .
 
       - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash

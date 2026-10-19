@@ -2,7 +2,7 @@
 
 Chrome extension hỗ trợ sắp xếp frame theo clip và thao tác nhãn nhanh trên DMS Labeling.
 
-Phiên bản hiện tại: **1.6.12**
+Phiên bản hiện tại: **1.6.13**
 
 [Tải bản mới nhất](https://github.com/tanmainhat0502/dms_annotation_extension/releases/latest)
 
@@ -35,14 +35,14 @@ Hướng dẫn đầy đủ nằm trong [extension/README.md](extension/README.m
 
 Có thể clone repository rồi chọn trực tiếp thư mục `extension` ở bước 5.
 
-## Cập nhật một click trên Windows
+## Cập nhật một click trên Windows và macOS
 
-Chrome không cho bản `Load unpacked` tự thay mã nguồn nếu chỉ dùng API extension. Bản 1.5.8 kèm **NOTA Updater** chạy cục bộ để thực hiện phần thay file qua Native Messaging.
+Chrome không cho bản `Load unpacked` tự thay mã nguồn nếu chỉ dùng API extension. **NOTA Updater** chạy cục bộ qua Native Messaging để thay file trên Windows hoặc macOS.
 
 Thiết lập một lần:
 
-1. Cài bản 1.6.12 vào một thư mục cố định bằng **Load unpacked**.
-2. Double-click `Install-NOTA-Updater.cmd` trong thư mục đó.
+1. Cài bản 1.6.13 vào một thư mục cố định bằng **Load unpacked**.
+2. Trên Windows, double-click `Install-NOTA-Updater.cmd`. Trên MacBook, right-click `Install-NOTA-Updater.command` và chọn **Open**.
 3. Đóng và mở lại popup. Nút **Cài update một lần** sẽ biến mất khi updater sẵn sàng.
 
 Từ phiên bản sau:
@@ -51,14 +51,14 @@ Từ phiên bản sau:
 2. Khi có bản mới, bấm **Update ngay vX.Y.Z**.
 3. Updater tải GitHub Release, kiểm tra SHA256, thay file và reload extension tự động.
 
-Updater không cần quyền Administrator. Bộ cài đọc Chrome profile để tìm ID gắn với đúng thư mục đang được **Load unpacked**; native host chỉ nhận lệnh từ ID đó. Nếu extension được cài từ Chrome Web Store, Chrome vẫn dùng cơ chế cập nhật Store chính thức.
+Updater không cần quyền Administrator. Bộ cài đọc Chrome profile để tìm ID gắn với đúng thư mục đang được **Load unpacked**; native host chỉ nhận lệnh từ ID đó. Bản macOS là universal binary, chạy trên cả Apple Silicon và Intel. Nếu extension được cài từ Chrome Web Store, Chrome vẫn dùng cơ chế cập nhật Store chính thức.
 
 ## Cấu trúc repository
 
 ```text
 extension/              Mã nguồn có thể Load unpacked
 dist/                   ZIP phát hành hiện tại
-native-updater/         Mã nguồn và script build updater Windows
+native-updater/         Mã nguồn updater Windows và macOS
 scripts/package.ps1     Đóng gói ZIP theo version trong manifest
 .github/workflows/      Tự tạo GitHub Release khi push tag vX.Y.Z
 ```
