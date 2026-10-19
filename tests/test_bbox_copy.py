@@ -78,16 +78,54 @@ def transpose(item):
     return {**item, "box": [y1, x1, y2, x2]}
 
 
+edge_before = box(4, 7, 6, 10)
+edge_after = box(4, 7, 12, 10)
+edge_neighbor = box(0, 12, 2, 19)
+edge_sources = [outer, edge_after, edge_neighbor]
+edge_operation = {"type": "edge", "coord": 2, "value": 12, "rank": 1, "itemIndex": 1,
+                  "originalBox": edge_before["box"], "currentBox": edge_after["box"]}
+edge_cases = [
+    ("missing inner box adds the edited source instead of shrinking the outer body",
+     edge_sources, edge_operation, [target_outer, edge_neighbor], [target_outer, edge_neighbor, edge_after]),
+    ("match the old small box even after a large width correction",
+     edge_sources, edge_operation, [target_outer, box(4.2, 7.1, 6.2, 10.1), edge_neighbor],
+     [target_outer, box(4.2, 7.1, 12, 10.1), edge_neighbor]),
+    ("reordered targets still change only the matching box and one edge",
+     edge_sources, edge_operation, [edge_neighbor, box(4.2, 7.1, 6.2, 10.1), target_outer],
+     [edge_neighbor, box(4.2, 7.1, 12, 10.1), target_outer]),
+    ("empty target receives one edited box",
+     edge_sources, edge_operation, [], [edge_after]),
+    ("duplicate target boxes collapse after edge propagation",
+     edge_sources, edge_operation, [target_outer, edge_before, edge_after, edge_neighbor],
+     [target_outer, edge_after, edge_neighbor]),
+    ("inward edge movement matches the original geometry",
+     [outer, edge_before, edge_neighbor],
+     {**edge_operation, "value": 6, "originalBox": edge_after["box"], "currentBox": edge_before["box"]},
+     [target_outer, box(4.2, 7.1, 12.2, 10.1), edge_neighbor],
+     [target_outer, box(4.2, 7.1, 6, 10.1), edge_neighbor]),
+    ("left edge preserves the other three target coordinates",
+     [outer, box(3, 7, 12, 10), edge_neighbor],
+     {**edge_operation, "coord": 0, "value": 3, "originalBox": [8, 7, 12, 10], "currentBox": [3, 7, 12, 10]},
+     [target_outer, box(8.2, 7.1, 12.2, 10.1), edge_neighbor],
+     [target_outer, box(3, 7.1, 12.2, 10.1), edge_neighbor]),
+    ("missing reference geometry must not fall back to target rank",
+     edge_sources, {"type": "edge", "coord": 2, "value": 12, "rank": 1},
+     [target_outer, edge_neighbor], [target_outer, edge_neighbor]),
+]
+
+
 def main():
     content = (Path(__file__).resolve().parents[1] / "extension" / "content.js").read_text(encoding="utf-8")
     guard = '  if (!ALLOWED_ORIGINS.has(location.origin) || document.getElementById(ROOT_ID)) return;'
     assert content.count(guard) == 1
     # Expose the actual production function on about:blank. The origin guard
     # then exits normally, without installing any application UI or listeners.
-    content = content.replace(guard, '  window.copyBboxForTest = mergeCopiedGenericBbox;\n' + guard)
+    content = content.replace(guard, '  window.copyBboxForTest = mergeCopiedGenericBbox;\n'
+                              '  window.edgeBboxForTest = applyQuickOperationToItems;\n' + guard)
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
         page = browser.new_page()
+        page.evaluate("window.S = {sess: {src_w: 20, src_h: 20}}")
         page.add_script_tag(content=content)
         for transpose_axes in (False, True):
             transform = transpose if transpose_axes else copy.deepcopy
@@ -104,8 +142,27 @@ def main():
                 assert result["first"] == wanted, (name, transpose_axes, result)
                 assert result["again"] == wanted, (name, "repeated copy", result)
                 assert result["unchanged"], (name, "mutated input")
+            for name, sources, operation, targets, expected in edge_cases:
+                op = copy.deepcopy(operation)
+                if transpose_axes:
+                    op["coord"] = {0: 1, 1: 0, 2: 3, 3: 2}[op["coord"]]
+                    for field in ("originalBox", "currentBox"):
+                        if field in op:
+                            op[field] = transpose({"box": op[field]})["box"]
+                payload = {"sources": [transform(x) for x in sources], "op": op,
+                           "targets": [transform(x) for x in targets]}
+                result = page.evaluate("""data => {
+                  const before = JSON.stringify(data);
+                  const first = edgeBboxForTest(data.targets, data.op, data.sources);
+                  const again = edgeBboxForTest(first, data.op, data.sources);
+                  return {first, again, unchanged: JSON.stringify(data) === before};
+                }""", payload)
+                wanted = [transform(x) for x in expected]
+                assert result["first"] == wanted, (name, transpose_axes, result)
+                assert result["again"] == wanted, (name, "repeated edge propagation", result)
+                assert result["unchanged"], (name, "mutated input")
         browser.close()
-    print(f"PASS: {len(cases) * 2} bbox-copy cases, repeated paste and input preservation")
+    print(f"PASS: {len(cases) * 2} bbox-copy and {len(edge_cases) * 2} edge cases; repeated operations and input preservation")
 
 
 if __name__ == "__main__":

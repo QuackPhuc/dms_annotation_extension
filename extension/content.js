@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.6.16";
+  const VERSION = "1.6.17";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";
@@ -2050,8 +2050,7 @@
       ...patch,
       type: "edge",
       source: patch.g,
-      value: next[patch.coord],
-      rank: bboxHorizontalOrder(ED.items).findIndex((entry) => entry.index === patch.itemIndex)
+      value: next[patch.coord]
     };
     notify(`Đã đặt cạnh ${patch.edge} tại ${next[patch.coord].toFixed(1)} px · Ctrl+B để áp dụng đúng vị trí này`);
   }
@@ -2681,7 +2680,8 @@
           ? `Đặt cạnh ${operation.edge} tại ${Number(operation.value).toFixed(1)} px`
           : `Sao chép ${sourceCount} ${eyeMode ? "cụm mắt" : boxMode ? "box" : "cụm face 7pt"}`;
       preview.textContent = `${actionText} trên ${picked.targets.length} frame ${directionText}` +
-        (operationMode ? " · giữ nguyên các box/cạnh còn lại" : ` · ${writeText}`) +
+        (operation?.type === "edge" ? " · giữ các cạnh và box khác; thiếu box tương ứng thì thêm box nguồn đã chỉnh" :
+          operationMode ? " · giữ nguyên các box/cạnh còn lại" : ` · ${writeText}`) +
         (skipped ? ` · bỏ qua ${skipped} frame đã Done` : "") + ". Tối đa 4 request chạy song song.";
     }
     dialog.querySelector(".nl-apply").disabled = Boolean(picked.error) || !sourceCount || state.operationBusy;
@@ -3250,6 +3250,24 @@
     return containment >= BBOX_COPY_MATCH_CONTAINMENT_THRESHOLD && similarSize ? iou : 0;
   }
 
+  function findGenericBboxMatches(targetItems, candidates, sourceItems = []) {
+    // Compare against the other source boxes before replacing anything. An
+    // enclosing body can overlap the selected inner box yet belong to a much
+    // better match in the source layout. Nearly coincident source duplicates
+    // belong to the selected copy, so they must not protect old target boxes.
+    // This grouping is separate from the 90% IoU threshold for red warnings.
+    const otherSources = sourceItems.filter((item) => candidates.every((candidate) =>
+      (item?.cls && candidate.cls && item.cls !== candidate.cls) ||
+      bboxIntersectionOverUnion(item?.box, candidate.box) < BBOX_COPY_DUPLICATE_IOU_THRESHOLD));
+    const matches = [];
+    targetItems.forEach((item, index) => {
+      const score = Math.max(0, ...candidates.map((candidate) => bboxCopyMatchScore(item, candidate)));
+      if (!score || otherSources.some((other) => bboxCopyMatchScore(item, other) >= score - 1e-9)) return;
+      matches.push({ index, score });
+    });
+    return matches;
+  }
+
   function mergeCopiedGenericBbox(targetItems, sourceItem, sourceItems = []) {
     const nextItems = cloneGenericItems(targetItems);
     const added = cloneGenericItems([sourceItem])[0];
@@ -3258,20 +3276,7 @@
       if (!nextItems.some((item) => sameGenericItem(item, added))) nextItems.push(added);
       return nextItems;
     }
-    // Compare against the other source boxes before replacing anything. An
-    // enclosing body can overlap the selected inner box yet belong to a much
-    // better match in the source layout. Nearly coincident source duplicates
-    // belong to the selected copy, so they must not protect old target boxes.
-    // This grouping is separate from the 90% IoU threshold for red warnings.
-    const otherSources = sourceItems.filter((item) =>
-      (item?.cls && added.cls && item.cls !== added.cls) ||
-      bboxIntersectionOverUnion(item?.box, added.box) < BBOX_COPY_DUPLICATE_IOU_THRESHOLD);
-    const matchingIndexes = [];
-    nextItems.forEach((item, index) => {
-      const score = bboxCopyMatchScore(item, added);
-      if (!score || otherSources.some((other) => bboxCopyMatchScore(item, other) >= score - 1e-9)) return;
-      matchingIndexes.push(index);
-    });
+    const matchingIndexes = findGenericBboxMatches(nextItems, [added], sourceItems).map((match) => match.index);
     if (!matchingIndexes.length) {
       nextItems.push(added);
       return nextItems;
@@ -3372,7 +3377,7 @@
     else applyGenericBulkCopy();
   }
 
-  function applyQuickOperationToItems(items, operation) {
+  function applyQuickOperationToItems(items, operation, sourceItems = []) {
     const next = cloneGenericItems(items);
     const order = bboxHorizontalOrder(next);
     if (operation.type === "delete") {
@@ -3389,17 +3394,31 @@
       return next;
     }
     if (operation.type === "edge") {
-      const rank = Math.max(0, Math.min(order.length - 1, Number(operation.rank) || 0));
-      const target = order[rank] ? next[order[rank].index] : null;
-      if (!Array.isArray(target?.box)) return next;
       const coord = Number(operation.coord);
-      target.box[coord] = Number(operation.value);
+      const value = Number(operation.value);
       const width = Number(S.sess?.src_w) || 0;
       const height = Number(S.sess?.src_h) || 0;
+      if (![0, 1, 2, 3].includes(coord) || !Number.isFinite(value) || !width || !height ||
+          !bboxDimensionSimilarity(operation.originalBox, operation.currentBox)) return next;
+      const source = sourceItems[operation.itemIndex] || {};
+      const original = cloneGenericItems([{ ...source, box: operation.originalBox }])[0];
+      const current = cloneGenericItems([{ ...source, box: operation.currentBox }])[0];
+      // Dragging a single edge can change width/height drastically. Match
+      // either the original or edited geometry, never the left/right rank.
+      const matches = findGenericBboxMatches(next, [original, current], sourceItems);
+      const best = matches.reduce((chosen, match) => !chosen || match.score > chosen.score ? match : chosen, null);
+      const target = best ? next[best.index] : current;
+      target.box[coord] = value;
       if (coord === 0) target.box[0] = Math.max(0, Math.min(target.box[2] - 1, target.box[0]));
       if (coord === 1) target.box[1] = Math.max(0, Math.min(target.box[3] - 1, target.box[1]));
       if (coord === 2) target.box[2] = Math.min(width, Math.max(target.box[0] + 1, target.box[2]));
       if (coord === 3) target.box[3] = Math.min(height, Math.max(target.box[1] + 1, target.box[3]));
+      if (!best) {
+        next.push(target);
+      } else {
+        const duplicates = new Set(matches.filter((match) => match.index !== best.index).map((match) => match.index));
+        return next.filter((_, index) => !duplicates.has(index));
+      }
     }
     return next;
   }
@@ -3440,7 +3459,7 @@
         const currentItems = await getFrameGenericItems(g, context.label, context.generation);
         undoFrames.push({ g, items: cloneGenericItems(currentItems) });
         if (operationMode) {
-          nextItems = applyQuickOperationToItems(currentItems, operation);
+          nextItems = applyQuickOperationToItems(currentItems, operation, context.sourceItems);
         } else if (scope === "selected") {
           const added = cloneGenericItems(sourceItems)[0];
           nextItems = mergeCopiedGenericBbox(currentItems, added, context.sourceItems);

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.17 - 2026-10-19
+
+- Sửa `Ctrl+B` sau khi kéo cạnh xanh của body: tìm box đích theo hình dạng trước/sau chỉnh và bố cục nguồn, không chọn theo thứ tự trái/phải nên không còn thu nhầm khung lớn khi frame đích thiếu box nhỏ.
+- Nếu chưa có box tương ứng thì thêm box nguồn đã chỉnh; nếu đã có thì chỉ đổi cạnh được chọn sang tọa độ tuyệt đối của đường xanh và giữ ba cạnh còn lại. Giữ các đối tượng khác và gộp box trùng tương ứng.
+- Kiểm thử bốn cạnh, frame thiếu box, thứ tự box khác nhau, box lồng nhau, copy lặp và hoàn tác cả đợt.
+
 ## 1.6.16 - 2026-10-19
 
 - Sửa trường hợp hai body box nguồn gần trùng nhau vẫn làm giữ lại box cũ ở frame đích. Nhóm box gần trùng dùng ngưỡng IoU 75% riêng cho copy; cảnh báo đỏ vẫn giữ ngưỡng 90%.
