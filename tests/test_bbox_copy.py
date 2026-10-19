@@ -16,8 +16,27 @@ target_outer = box(0.6, 0.4, 19.6, 19.4)
 narrow = box(3, 6, 6.3, 12)
 duplicate = box(3.1, 6.1, 6.4, 12.1)
 target_third = box(4.1, 5.1, 6.1, 7.1)
+wide_body = box(50, 54, 833, 735)
+old_wide_body = box(72, 60, 948, 743)
+separate_body = box(0, 250, 45, 650)
+single_body = box(14, 175, 232, 562)
 
 cases = [
+    ("nearly coincident source bodies below 90 percent must not shield the old target",
+     [wide_body, old_wide_body, separate_body], wide_body,
+     [old_wide_body, box(70, 58, 946, 740), separate_body], [wide_body, separate_body]),
+    ("nearly coincident bodies also collapse when copying the wider one",
+     [wide_body, old_wide_body, separate_body], old_wide_body,
+     [wide_body, old_wide_body, separate_body], [old_wide_body, separate_body]),
+    ("single source replaces the taller body on the next frame",
+     [single_body], single_body, [box(16, 80, 232, 563)], [single_body]),
+    ("single source replaces all old body duplicates with one copy",
+     [single_body], single_body,
+     [box(16, 80, 232, 563), box(14, 192, 230, 560)], [single_body]),
+    ("single source replacement still preserves a body elsewhere",
+     [single_body], single_body,
+     [box(16, 80, 232, 563), box(300, 20, 900, 560)],
+     [single_body, box(300, 20, 900, 560)]),
     ("narrow inner box and duplicates, enclosing box and third person preserved",
      [outer, selected, third], selected,
      [target_outer, narrow, target_third, duplicate],
@@ -28,6 +47,9 @@ cases = [
      [target_third, selected, target_outer]),
     ("small person inside a large body remains separate",
      [outer, third], third, [target_outer, target_third], [target_outer, third]),
+    ("copying the enclosing body preserves its separate inner annotation",
+     [outer, selected, third], outer,
+     [target_outer, selected, target_third], [outer, selected, target_third]),
     ("enclosing body remains separate even without a counterpart at source",
      [third], third, [target_outer, target_third], [target_outer, third]),
     ("large height correction collapses older duplicates",

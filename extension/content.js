@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.6.15";
+  const VERSION = "1.6.16";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";
@@ -20,6 +20,7 @@
   const OBJECT_BBOX_LABELS = new Set(["cigarette", "e_cigarette", "phone", "can", "bottle"]);
   const QUICK_BBOX_LABELS = new Set(["body", "hand", "eye"]);
   const BBOX_OVERLAP_IOU_THRESHOLD = 0.9;
+  const BBOX_COPY_DUPLICATE_IOU_THRESHOLD = 0.75;
   const BBOX_COPY_MATCH_IOU_THRESHOLD = 0.5;
   const BBOX_COPY_MATCH_CONTAINMENT_THRESHOLD = 0.75;
   const BBOX_COPY_MATCH_SIZE_THRESHOLD = 0.4;
@@ -3259,10 +3260,12 @@
     }
     // Compare against the other source boxes before replacing anything. An
     // enclosing body can overlap the selected inner box yet belong to a much
-    // better match in the source layout. Near-identical source duplicates do
-    // not protect old duplicates from being collapsed.
+    // better match in the source layout. Nearly coincident source duplicates
+    // belong to the selected copy, so they must not protect old target boxes.
+    // This grouping is separate from the 90% IoU threshold for red warnings.
     const otherSources = sourceItems.filter((item) =>
-      bboxIntersectionOverUnion(item?.box, added.box) < BBOX_OVERLAP_IOU_THRESHOLD);
+      (item?.cls && added.cls && item.cls !== added.cls) ||
+      bboxIntersectionOverUnion(item?.box, added.box) < BBOX_COPY_DUPLICATE_IOU_THRESHOLD);
     const matchingIndexes = [];
     nextItems.forEach((item, index) => {
       const score = bboxCopyMatchScore(item, added);

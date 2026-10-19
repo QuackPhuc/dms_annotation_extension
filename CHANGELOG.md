@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.16 - 2026-10-19
+
+- Sửa trường hợp hai body box nguồn gần trùng nhau vẫn làm giữ lại box cũ ở frame đích. Nhóm box gần trùng dùng ngưỡng IoU 75% riêng cho copy; cảnh báo đỏ vẫn giữ ngưỡng 90%.
+- Kiểm thử một box nguồn thay một hoặc nhiều box cũ cao/thấp khác nhau: kết quả còn đúng một box vừa copy tại vị trí đó, đồng thời giữ các đối tượng khác.
+- Kiểm thử lại box lồng nhau, copy lặp, `Ctrl+C` / `Ctrl+V` và hoàn tác hàng loạt bằng `Z`.
+
 ## 1.6.15 - 2026-10-19
 
 - Sửa sao chép riêng bbox khi có box lồng nhau: đối chiếu cả bố cục nguồn để giữ box bao ngoài và các đối tượng khác, đồng thời thay box hẹp tương ứng bằng đúng một box được copy.
