@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.6.5";
+  const VERSION = "1.6.6";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";
@@ -201,7 +201,6 @@
         line-height: 1;
         white-space: nowrap;
         writing-mode: vertical-rl;
-        transform: rotate(180deg);
       }
       #labList > .grp[hidden] { display: none !important; }
       #labList .nl-clip {

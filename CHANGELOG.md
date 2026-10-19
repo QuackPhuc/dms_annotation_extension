@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.6 - 2026-10-19
+
+- Sửa hướng hiển thị tổng số ảnh trong cột part để đọc từ trên xuống dưới, không còn bị xoay ngược.
+
 ## 1.6.5 - 2026-10-19
 
 - `Ctrl+B` với **Chỉ box đang chọn** chuyển sang thêm box vào frame đích; không thay thế hoặc làm mất box cũ.
