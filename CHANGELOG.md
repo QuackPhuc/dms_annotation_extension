@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.14 - 2026-10-19
+
+- Sửa bộ cài updater trên Windows để dò Extension ID trong cả `Preferences` và `Secure Preferences` của Chrome, Chrome Beta, Chrome Canary và Chromium.
+- Nếu Chrome không cho tự dò ID, bộ cài hướng dẫn người dùng copy ID từ `chrome://extensions` rồi dán trực tiếp để tiếp tục cài đặt.
+
 ## 1.6.13 - 2026-10-19
 
 - Thêm `Install-NOTA-Updater.command` và native updater universal cho macOS Apple Silicon/Intel; người dùng MacBook có thể cài updater một lần rồi dùng nút **Update ngay** như Windows.

@@ -22,24 +22,40 @@ if (-not (Test-Path -LiteralPath $sourceExe)) {
 }
 
 if ($ExtensionId -match '^[a-p]{32}$') { [void]$extensionIds.Add($ExtensionId) }
-$chromeUserData = Join-Path $env:LOCALAPPDATA "Google\Chrome\User Data"
-if (Test-Path -LiteralPath $chromeUserData) {
+$chromeRoots = @(
+    (Join-Path $env:LOCALAPPDATA "Google\Chrome\User Data"),
+    (Join-Path $env:LOCALAPPDATA "Google\Chrome Beta\User Data"),
+    (Join-Path $env:LOCALAPPDATA "Google\Chrome SxS\User Data"),
+    (Join-Path $env:LOCALAPPDATA "Chromium\User Data")
+)
+$expectedExtensionPath = $extensionRoot.TrimEnd('\', '/')
+foreach ($chromeUserData in $chromeRoots) {
+    if (-not (Test-Path -LiteralPath $chromeUserData)) { continue }
     Get-ChildItem -LiteralPath $chromeUserData -Directory -ErrorAction SilentlyContinue | ForEach-Object {
-        $preferencesPath = Join-Path $_.FullName "Secure Preferences"
-        if (-not (Test-Path -LiteralPath $preferencesPath)) { return }
-        try {
-            $preferences = Get-Content -Raw -Encoding UTF8 -LiteralPath $preferencesPath | ConvertFrom-Json
-            foreach ($entry in $preferences.extensions.settings.PSObject.Properties) {
-                $configuredPath = [string]$entry.Value.path
-                if (-not $configuredPath) { continue }
-                try { $configuredPath = [System.IO.Path]::GetFullPath($configuredPath).TrimEnd('\') } catch { continue }
-                if ($configuredPath -eq $extensionRoot.TrimEnd('\')) { [void]$extensionIds.Add($entry.Name) }
-            }
-        } catch { }
+        foreach ($preferencesName in @("Secure Preferences", "Preferences")) {
+            $preferencesPath = Join-Path $_.FullName $preferencesName
+            if (-not (Test-Path -LiteralPath $preferencesPath)) { continue }
+            try {
+                $preferences = Get-Content -Raw -Encoding UTF8 -LiteralPath $preferencesPath | ConvertFrom-Json
+                if (-not $preferences.extensions.settings) { continue }
+                foreach ($entry in $preferences.extensions.settings.PSObject.Properties) {
+                    $configuredPath = [string]$entry.Value.path
+                    if (-not $configuredPath) { continue }
+                    try { $configuredPath = [System.IO.Path]::GetFullPath($configuredPath).TrimEnd('\', '/') } catch { continue }
+                    if ($configuredPath -eq $expectedExtensionPath) { [void]$extensionIds.Add($entry.Name) }
+                }
+            } catch { }
+        }
     }
 }
 if ($extensionIds.Count -eq 0) {
-    throw "Cannot find the Extension ID. Load unpacked this folder in Chrome, then run the updater installer again."
+    Write-Host "Cannot automatically find the Extension ID." -ForegroundColor Yellow
+    Write-Host "Open chrome://extensions, enable Developer mode, then copy the ID shown under NOTA Labeling Organizer."
+    $manualId = ([string](Read-Host "Paste Extension ID")).Trim().ToLowerInvariant()
+    if ($manualId -notmatch '^[a-p]{32}$') {
+        throw "Extension ID is invalid. It must contain 32 letters from a to p."
+    }
+    [void]$extensionIds.Add($manualId)
 }
 $allowedOrigins = @($extensionIds | ForEach-Object { "chrome-extension://$_/" })
 

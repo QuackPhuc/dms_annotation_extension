@@ -1,6 +1,10 @@
 @echo off
 title NOTA Labeling Updater
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0updater\Install-NOTA-Updater.ps1"
+if "%~1"=="" (
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0updater\Install-NOTA-Updater.ps1"
+) else (
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0updater\Install-NOTA-Updater.ps1" -ExtensionId "%~1"
+)
 if errorlevel 1 (
   echo.
   echo Cai dat that bai. Vui long chup man hinh loi nay.
