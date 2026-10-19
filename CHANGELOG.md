@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.15 - 2026-10-19
+
+- Sửa sao chép riêng bbox khi có box lồng nhau: đối chiếu cả bố cục nguồn để giữ box bao ngoài và các đối tượng khác, đồng thời thay box hẹp tương ứng bằng đúng một box được copy.
+- Áp dụng cùng cách ghép cho `Ctrl+B` và `Ctrl+C` / `Ctrl+V`; copy lặp không thêm box trùng, `Z` vẫn hoàn tác được cả đợt.
+- Thêm kiểm thử cho box lồng nhau, box khác kích thước, box trùng và dán lặp.
+
 ## 1.6.14 - 2026-10-19
 
 - Sửa bộ cài updater trên Windows để dò Extension ID trong cả `Preferences` và `Secure Preferences` của Chrome, Chrome Beta, Chrome Canary và Chromium.

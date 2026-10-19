@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.6.14";
+  const VERSION = "1.6.15";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";
@@ -23,6 +23,8 @@
   const BBOX_COPY_MATCH_IOU_THRESHOLD = 0.5;
   const BBOX_COPY_MATCH_CONTAINMENT_THRESHOLD = 0.75;
   const BBOX_COPY_MATCH_SIZE_THRESHOLD = 0.4;
+  const BBOX_COPY_MATCH_NARROW_AXIS_THRESHOLD = 0.25;
+  const BBOX_COPY_MATCH_LONG_AXIS_THRESHOLD = 0.6;
 
   if (!ALLOWED_ORIGINS.has(location.origin) || document.getElementById(ROOT_ID)) return;
 
@@ -1907,6 +1909,7 @@
       session: S.sess,
       label: S.labelSel,
       items: cloneGenericItems(selected ? [ED.items[selectedIndex]] : ED.items),
+      sourceItems: cloneGenericItems(ED.items),
       mode: selected ? "selected" : "all",
       rank: selected ? bboxHorizontalOrder(ED.items).findIndex((entry) => entry.index === selectedIndex) : -1
     };
@@ -1925,7 +1928,7 @@
     let nextItems = clipboard.items;
     if (clipboard.mode === "selected") {
       const copied = cloneGenericItems(clipboard.items)[0];
-      nextItems = mergeCopiedGenericBbox(ED.items, copied);
+      nextItems = mergeCopiedGenericBbox(ED.items, copied, clipboard.sourceItems);
     }
     replaceCurrentBboxItems(nextItems, { type: "copy" }, clipboard.mode === "selected"
       ? `Đã dán box ${S.labelSel} · thay box trùng hoặc thêm box mới`
@@ -2667,7 +2670,7 @@
       const writeText = eyeMode
         ? (writeMode === "replace" ? "thay toàn bộ mắt ở frame đích" : "thay mắt cùng vị trí, giữ các mắt còn lại")
         : scope === "selected"
-          ? "thay box trùng cùng vị trí, nếu không trùng thì thêm box mới"
+          ? "thay box tương ứng, giữ các box khác; nếu không có box khớp thì thêm mới"
           : "thay bằng toàn bộ dữ liệu của frame nguồn";
       const directionText = state.eyeBulkDirection === "marked" ? "đã đánh dấu" :
         state.eyeBulkDirection === "after" ? "sau" : "trước";
@@ -3218,20 +3221,35 @@
   }
 
   function bboxDimensionSimilarity(left, right) {
-    if (!Array.isArray(left) || left.length < 4 || !Array.isArray(right) || right.length < 4) return 0;
+    if (!Array.isArray(left) || left.length < 4 || !Array.isArray(right) || right.length < 4) return null;
     const a = left.slice(0, 4).map(Number);
     const b = right.slice(0, 4).map(Number);
-    if (!a.every(Number.isFinite) || !b.every(Number.isFinite)) return 0;
+    if (!a.every(Number.isFinite) || !b.every(Number.isFinite)) return null;
     const widthA = Math.abs(a[2] - a[0]);
     const heightA = Math.abs(a[3] - a[1]);
     const widthB = Math.abs(b[2] - b[0]);
     const heightB = Math.abs(b[3] - b[1]);
-    if (!widthA || !heightA || !widthB || !heightB) return 0;
-    return Math.min(Math.min(widthA, widthB) / Math.max(widthA, widthB),
-      Math.min(heightA, heightB) / Math.max(heightA, heightB));
+    if (!widthA || !heightA || !widthB || !heightB) return null;
+    const width = Math.min(widthA, widthB) / Math.max(widthA, widthB);
+    const height = Math.min(heightA, heightB) / Math.max(heightA, heightB);
+    return { min: Math.min(width, height), max: Math.max(width, height) };
   }
 
-  function mergeCopiedGenericBbox(targetItems, sourceItem) {
+  function bboxCopyMatchScore(target, source) {
+    if (target?.cls && source?.cls && target.cls !== source.cls) return 0;
+    const size = bboxDimensionSimilarity(target?.box, source?.box);
+    if (!size) return 0;
+    const iou = bboxIntersectionOverUnion(target.box, source.box);
+    if (iou >= BBOX_COPY_MATCH_IOU_THRESHOLD) return iou;
+    const containment = bboxIntersectionOverSmaller(target.box, source.box);
+    // A box can need a substantial correction along just one axis. Tiny boxes
+    // that differ in both dimensions remain separate annotations.
+    const similarSize = size.min >= BBOX_COPY_MATCH_SIZE_THRESHOLD ||
+      (size.min >= BBOX_COPY_MATCH_NARROW_AXIS_THRESHOLD && size.max >= BBOX_COPY_MATCH_LONG_AXIS_THRESHOLD);
+    return containment >= BBOX_COPY_MATCH_CONTAINMENT_THRESHOLD && similarSize ? iou : 0;
+  }
+
+  function mergeCopiedGenericBbox(targetItems, sourceItem, sourceItems = []) {
     const nextItems = cloneGenericItems(targetItems);
     const added = cloneGenericItems([sourceItem])[0];
     if (!added) return nextItems;
@@ -3239,14 +3257,17 @@
       if (!nextItems.some((item) => sameGenericItem(item, added))) nextItems.push(added);
       return nextItems;
     }
+    // Compare against the other source boxes before replacing anything. An
+    // enclosing body can overlap the selected inner box yet belong to a much
+    // better match in the source layout. Near-identical source duplicates do
+    // not protect old duplicates from being collapsed.
+    const otherSources = sourceItems.filter((item) =>
+      bboxIntersectionOverUnion(item?.box, added.box) < BBOX_OVERLAP_IOU_THRESHOLD);
     const matchingIndexes = [];
     nextItems.forEach((item, index) => {
-      const iou = bboxIntersectionOverUnion(item?.box, added.box);
-      const containment = bboxIntersectionOverSmaller(item?.box, added.box);
-      const sizeSimilarity = bboxDimensionSimilarity(item?.box, added.box);
-      if (iou >= BBOX_COPY_MATCH_IOU_THRESHOLD ||
-          (containment >= BBOX_COPY_MATCH_CONTAINMENT_THRESHOLD &&
-            sizeSimilarity >= BBOX_COPY_MATCH_SIZE_THRESHOLD)) matchingIndexes.push(index);
+      const score = bboxCopyMatchScore(item, added);
+      if (!score || otherSources.some((other) => bboxCopyMatchScore(item, other) >= score - 1e-9)) return;
+      matchingIndexes.push(index);
     });
     if (!matchingIndexes.length) {
       nextItems.push(added);
@@ -3419,7 +3440,7 @@
           nextItems = applyQuickOperationToItems(currentItems, operation);
         } else if (scope === "selected") {
           const added = cloneGenericItems(sourceItems)[0];
-          nextItems = mergeCopiedGenericBbox(currentItems, added);
+          nextItems = mergeCopiedGenericBbox(currentItems, added, context.sourceItems);
         } else {
           nextItems = cloneGenericItems(sourceItems);
         }
