@@ -1,0 +1,53 @@
+:root { color-scheme: dark; }
+body {
+  width: 300px;
+  margin: 0;
+  padding: 16px;
+  box-sizing: border-box;
+  color: #eef2f7;
+  background: #171a20;
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+h1 { margin: 0 0 8px; font-size: 17px; }
+.state {
+  display: inline-block;
+  margin: 0 0 10px;
+  padding: 3px 8px;
+  border: 1px solid #22c55e;
+  border-radius: 999px;
+  color: #86efac;
+  font-weight: 700;
+}
+.update-box {
+  margin: 0 0 12px;
+  padding: 9px;
+  border: 1px solid #4b5563;
+  border-radius: 7px;
+  background: #20242c;
+}
+.update-box button {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid #a855f7;
+  border-radius: 5px;
+  color: #fff;
+  background: #6b21a8;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.update-box button:hover { background: #7e22ce; }
+.update-box button:disabled { cursor: wait; opacity: .7; }
+#updateStatus { margin: 7px 0 0; color: #cbd5e1; font-size: 12px; }
+#updateStatus.ok { color: #86efac; }
+#updateStatus.warn { color: #fcd34d; }
+#updateStatus.err { color: #fca5a5; }
+ol { margin: 4px 0 12px; padding-left: 20px; }
+li { margin: 5px 0; }
+.note {
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid #343a45;
+  color: #aeb8c6;
+  font-size: 12px;
+}

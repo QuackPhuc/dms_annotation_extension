@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NOTA Labeling Organizer</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <h1>NOTA Labeling Organizer</h1>
+  <p class="state">Đang bật</p>
+  <section class="update-box" aria-label="Cập nhật extension">
+    <button id="updateCheck" type="button">Kiểm tra update</button>
+    <p id="updateStatus">Phiên bản hiện tại: <b id="currentVersion"></b></p>
+  </section>
+  <ol>
+    <li><b>A / D</b>: frame trước / sau theo đúng thứ tự danh sách đang hiển thị. Khi lọc part, phím không nhảy ra ngoài part đó. <b>Shift+A / Shift+D</b>: di chuyển 10 frame. <b>Space</b>: phát theo cùng thứ tự và dừng ở cuối danh sách đang hiển thị.</li>
+    <li>Mở màn hình <b>Labeling</b>.</li>
+    <li>Nhập <b>ciga</b>, <b>phone</b>… để lọc part.</li>
+    <li>Bấm <b>#01, #02…</b> để mở các ảnh của clip.</li>
+    <li>Mỗi clip có ba nút: <b>Done</b>, <b>Not checked</b> và <b>In progress</b>. Bấm trạng thái nào để áp dụng trạng thái đó cho toàn bộ clip.</li>
+    <li>Frame Done bị sót: mở từng frame và nhấn <b>V</b> để chọn → <b>Ctrl+B</b> → chuyển sang <b>In progress</b>.</li>
+    <li>Label bbox: <b>N</b> rồi kéo chuột trái để tạo box; <b>M</b> vẽ vùng xóa màu đỏ giống seatbelt M, chuột phải để khép vùng và <b>Esc</b> để thoát. Khi kéo, box có thể vượt biên; thả chuột thì phần ngoài ảnh bị cắt và kích thước box được tính lại như CVAT.</li>
+    <li>Seatbelt <b>N/M</b>: có thể chấm ở nền đen ngoài ảnh; point được ghim vào biên ảnh như CVAT.</li>
+    <li><b>Ctrl+B</b> áp dụng vùng vừa vẽ cho nhiều frame.</li>
+    <li>Label dạng box: <b>Ctrl+B</b> → chọn <b>Box mới thêm</b> hoặc <b>Toàn bộ box hiện tại</b>.</li>
+    <li>Eye 15pt: kéo trong khung để di chuyển; giữ <b>Ctrl</b> và kéo để xoay; kéo ô vuông cạnh/góc để co giãn cả 15 điểm.</li>
+    <li><b>K</b> ẩn/hiện mask seatbelt hoặc eye 15pt khi frame đang In progress.</li>
+    <li><b>Esc / Hủy</b> bỏ vùng đang vẽ hoặc đang chờ áp dụng. Mask đã lưu dùng <b>Z</b> để hoàn tác.</li>
+    <li>1 Point SAM: <b>trái (+), phải (−)</b>. Có vùng xanh lá → <b>R</b> để thêm → <b>Ctrl+B</b>. Chỉ chồng phần mới thêm.</li>
+    <li><b>F</b> đổi Done/In progress. <b>Space</b> chạy/dừng video.</li>
+    <li>Khung SAM3 được nhớ khi chuyển frame trong clip, không tự co lại theo mask mới thêm.</li>
+    <li>Con trỏ crosshair trong ảnh dùng con trỏ của trình duyệt để di chuyển mượt; kéo/vẽ vẫn cập nhật liên tục.</li>
+    <li><b>Z</b> hoàn tác điểm/thao tác sửa ở frame hiện tại.</li>
+  </ol>
+  <p class="note">Tìm kiếm và gom clip chỉ đổi giao diện. Các nút trạng thái clip, polygon và Ctrl+B chỉ ghi dữ liệu sau khi bạn chủ động sử dụng.</p>
+  <script src="popup.js"></script>
+</body>
+</html>

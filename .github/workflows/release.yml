@@ -1,0 +1,42 @@
+name: Release extension
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify tag matches manifest version
+        shell: bash
+        run: |
+          VERSION=$(python -c 'import json; print(json.load(open("extension/manifest.json", encoding="utf-8"))["version"])')
+          test "v${VERSION}" = "${GITHUB_REF_NAME}" || {
+            echo "Tag ${GITHUB_REF_NAME} does not match manifest version v${VERSION}."
+            exit 1
+          }
+
+      - name: Package extension
+        shell: bash
+        run: |
+          ARCHIVE="NOTA_Labeling_Organizer_Extension_${GITHUB_REF_NAME}.zip"
+          cd extension
+          zip -r "../${ARCHIVE}" .
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          ARCHIVE="NOTA_Labeling_Organizer_Extension_${GITHUB_REF_NAME}.zip"
+          gh release create "${GITHUB_REF_NAME}" "${ARCHIVE}" \
+            --title "NOTA Labeling Organizer ${GITHUB_REF_NAME}" \
+            --generate-notes
