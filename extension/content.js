@@ -3386,9 +3386,11 @@
     }
     if (!event.ctrlKey && !event.metaKey && !event.altKey && !typing && !anyBulkDialogOpen() &&
         (event.code === "KeyA" || event.code === "KeyD") && pageLabelingReady()) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      navigateOrganizedFrames(event.code === "KeyA" ? -1 : 1, event.shiftKey ? 10 : 1);
+      // Fall back to the page's own A/D when the organized list cannot place the current frame.
+      if (navigateOrganizedFrames(event.code === "KeyA" ? -1 : 1, event.shiftKey ? 10 : 1)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
       return;
     }
     if (event.code === "KeyV" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey &&
