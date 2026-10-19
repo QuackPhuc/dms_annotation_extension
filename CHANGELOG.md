@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.10 - 2026-10-19
+
+- Khi sao chép riêng bbox, nhận diện box cùng vị trí với ngưỡng IoU 50% để thay box cũ kể cả khi chiều cao khác nhau; ngưỡng cảnh báo bbox trùng màu đỏ vẫn giữ ở 90%.
+
 ## 1.6.9 - 2026-10-19
 
 - Khi sao chép riêng một bbox bằng `Ctrl+B` hoặc `Ctrl+C` / `Ctrl+V`, box đích trùng từ 90% IoU được thay bằng box nguồn; nếu không có box trùng thì thêm box mới và giữ nguyên các box khác.

@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.6.9";
+  const VERSION = "1.6.10";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";
@@ -20,6 +20,7 @@
   const OBJECT_BBOX_LABELS = new Set(["cigarette", "e_cigarette", "phone", "can", "bottle"]);
   const QUICK_BBOX_LABELS = new Set(["body", "hand", "eye"]);
   const BBOX_OVERLAP_IOU_THRESHOLD = 0.9;
+  const BBOX_COPY_MATCH_IOU_THRESHOLD = 0.5;
 
   if (!ALLOWED_ORIGINS.has(location.origin) || document.getElementById(ROOT_ID)) return;
 
@@ -2664,7 +2665,7 @@
       const writeText = eyeMode
         ? (writeMode === "replace" ? "thay toàn bộ mắt ở frame đích" : "thay mắt cùng vị trí, giữ các mắt còn lại")
         : scope === "selected"
-          ? "thay box trùng từ 90% IoU, nếu không trùng thì thêm box mới"
+          ? "thay box trùng cùng vị trí, nếu không trùng thì thêm box mới"
           : "thay bằng toàn bộ dữ liệu của frame nguồn";
       const directionText = state.eyeBulkDirection === "marked" ? "đã đánh dấu" :
         state.eyeBulkDirection === "after" ? "sau" : "trước";
@@ -3204,7 +3205,7 @@
       return nextItems;
     }
     let matchIndex = -1;
-    let matchIou = BBOX_OVERLAP_IOU_THRESHOLD;
+    let matchIou = BBOX_COPY_MATCH_IOU_THRESHOLD;
     nextItems.forEach((item, index) => {
       const iou = bboxIntersectionOverUnion(item?.box, added.box);
       if (iou >= matchIou) {
