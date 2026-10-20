@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.20 - 2026-10-20
+
+- Keep each clip's expand/collapse toggle and status buttons visible below the search/image-loading toolbar while scrolling through its frames.
+- Adjust the sticky offset when the toolbar changes height, and leave room above frames revealed by keyboard navigation.
+
 ## 1.6.19 - 2026-10-20
 
 - Add **auto_load_img**, **Stop**, and a combined image counter for the current part and the next unfinished part.

@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.6.19";
+  const VERSION = "1.6.20";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";
@@ -33,6 +33,7 @@
     list: null,
     pane: null,
     toolbar: null,
+    toolbarObserver: null,
     input: null,
     status: null,
     empty: null,
@@ -133,6 +134,7 @@
     style.textContent = `
       #${ROOT_ID} {
         display: flex;
+        flex-shrink: 0;
         align-items: center;
         gap: 6px;
         padding: 8px 6px;
@@ -194,7 +196,7 @@
       #labList .nl-organized > .vlab { position: relative; }
       #labList .nl-part-total {
         position: sticky;
-        top: 4px;
+        top: calc(var(--nl-toolbar-height, 0px) + 4px);
         display: inline-flex;
         align-items: center;
         margin-top: 7px;
@@ -215,6 +217,10 @@
       }
       #labList .nl-clip:last-child { border-bottom: 0; }
       #labList .nl-clip > summary {
+        position: sticky;
+        top: var(--nl-toolbar-height, 0px);
+        z-index: 3;
+        scroll-margin-top: var(--nl-toolbar-height, 0px);
         display: flex;
         align-items: center;
         gap: 7px;
@@ -226,6 +232,9 @@
         color: #f1f5f9;
         background: #222832;
         list-style: none;
+      }
+      #labList .nl-clip li[data-g] {
+        scroll-margin-top: calc(var(--nl-toolbar-height, 0px) + 36px);
       }
       #labList .nl-clip > summary::-webkit-details-marker { display: none; }
       #labList .nl-clip > summary::before {
@@ -4335,6 +4344,14 @@
     injectStyle();
     state.toolbar = buildToolbar();
     state.list.before(state.toolbar);
+    // The image-loading controls can wrap or appear after the toolbar mounts.
+    // Keep clip controls below its actual height, including after sidebar resize.
+    const syncToolbarHeight = () => {
+      state.pane.style.setProperty("--nl-toolbar-height", `${state.toolbar.getBoundingClientRect().height}px`);
+    };
+    state.toolbarObserver = new ResizeObserver(syncToolbarHeight);
+    state.toolbarObserver.observe(state.toolbar);
+    syncToolbarHeight();
     buildMarkedBadge();
     ensureSidebarRendering();
     ensureStatusRendering();
