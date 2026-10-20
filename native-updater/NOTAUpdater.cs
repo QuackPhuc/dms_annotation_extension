@@ -23,7 +23,7 @@ internal static class NOTAUpdater
             var callerOrigin = args.Length > 0 ? args[0] : "";
             var allowedOrigins = TextList(config, "allowedOrigins");
             if (!allowedOrigins.Exists(origin => String.Equals(origin, callerOrigin, StringComparison.OrdinalIgnoreCase)))
-                throw new InvalidOperationException("Nguồn gọi updater không hợp lệ.");
+                throw new InvalidOperationException("Invalid updater caller origin.");
 
             var action = Text(request, "action");
             if (action == "ping")
@@ -33,7 +33,7 @@ internal static class NOTAUpdater
                 });
                 return;
             }
-            if (action != "update") throw new InvalidOperationException("Yêu cầu updater không hợp lệ.");
+            if (action != "update") throw new InvalidOperationException("Invalid updater request.");
 
             Send(Update(config));
         }
@@ -50,7 +50,7 @@ internal static class NOTAUpdater
         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
         var extensionPath = Path.GetFullPath(Text(config, "extensionPath"));
         var releaseApi = Text(config, "releaseApi");
-        if (!Directory.Exists(extensionPath)) throw new DirectoryNotFoundException("Không tìm thấy thư mục extension.");
+        if (!Directory.Exists(extensionPath)) throw new DirectoryNotFoundException("Extension folder not found.");
 
         var currentManifestPath = Path.Combine(extensionPath, "manifest.json");
         var currentManifest = ReadObject(File.ReadAllText(currentManifestPath, Encoding.UTF8));
@@ -69,7 +69,7 @@ internal static class NOTAUpdater
         var asset = FindZipAsset(release);
         var downloadUrl = Text(asset, "browser_download_url");
         if (!downloadUrl.StartsWith("https://github.com/tanmainhat0502/dms_annotation_extension/releases/download/", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("Đường dẫn Release không hợp lệ.");
+            throw new InvalidOperationException("Invalid release URL.");
 
         var temporaryRoot = Path.Combine(Path.GetTempPath(), "NOTA-Labeling-Updater-" + Guid.NewGuid().ToString("N"));
         var zipPath = Path.Combine(temporaryRoot, "extension.zip");
@@ -106,26 +106,26 @@ internal static class NOTAUpdater
     {
         object value;
         if (!release.TryGetValue("assets", out value) || !(value is IEnumerable))
-            throw new InvalidOperationException("Release không có danh sách file.");
+            throw new InvalidOperationException("The release has no asset list.");
         foreach (var item in (IEnumerable)value)
         {
             var asset = item as Dictionary<string, object>;
             if (asset != null && Text(asset, "name").EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) return asset;
         }
-        throw new InvalidOperationException("Release không có gói ZIP extension.");
+        throw new InvalidOperationException("The release has no extension ZIP package.");
     }
 
     private static void VerifyDigest(string path, string digest)
     {
-        if (String.IsNullOrWhiteSpace(digest)) throw new InvalidOperationException("Release chưa có SHA256.");
+        if (String.IsNullOrWhiteSpace(digest)) throw new InvalidOperationException("The release has no SHA256 digest.");
         var parts = digest.Split(new[] { ':' }, 2);
         if (parts.Length != 2 || !parts[0].Equals("sha256", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("Định dạng SHA256 không hợp lệ.");
+            throw new InvalidOperationException("Invalid SHA256 format.");
         string actual;
         using (var stream = File.OpenRead(path))
         using (var sha = SHA256.Create()) actual = BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
         if (!actual.Equals(parts[1], StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("SHA256 của gói update không khớp.");
+            throw new InvalidOperationException("The update package SHA256 does not match.");
     }
 
     private static void ExtractVerified(string zipPath, string destination)
@@ -138,7 +138,7 @@ internal static class NOTAUpdater
             {
                 var target = Path.GetFullPath(Path.Combine(destination, entry.FullName));
                 if (!target.StartsWith(root, StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidOperationException("Gói update chứa đường dẫn không an toàn.");
+                    throw new InvalidOperationException("The update package contains an unsafe path.");
             }
         }
         ZipFile.ExtractToDirectory(zipPath, destination);
@@ -147,10 +147,10 @@ internal static class NOTAUpdater
     private static void ValidatePayload(string payload, string expectedVersion)
     {
         foreach (var required in new[] { "manifest.json", "content.js", "popup.html", "popup.js" })
-            if (!File.Exists(Path.Combine(payload, required))) throw new InvalidOperationException("Gói update thiếu " + required + ".");
+            if (!File.Exists(Path.Combine(payload, required))) throw new InvalidOperationException("The update package is missing " + required + ".");
         var manifest = ReadObject(File.ReadAllText(Path.Combine(payload, "manifest.json"), Encoding.UTF8));
-        if (Text(manifest, "name") != "NOTA Labeling Organizer") throw new InvalidOperationException("Sai extension trong gói update.");
-        if (Text(manifest, "version") != expectedVersion) throw new InvalidOperationException("Version trong manifest không khớp Release.");
+        if (Text(manifest, "name") != "NOTA Labeling Organizer") throw new InvalidOperationException("The update package contains the wrong extension.");
+        if (Text(manifest, "version") != expectedVersion) throw new InvalidOperationException("The manifest version does not match the release.");
     }
 
     private static void CopyPayload(string payload, string extensionPath)
@@ -191,14 +191,14 @@ internal static class NOTAUpdater
     private static Dictionary<string, object> ReadObject(string value)
     {
         var result = Json.DeserializeObject(value) as Dictionary<string, object>;
-        if (result == null) throw new InvalidOperationException("JSON không hợp lệ.");
+        if (result == null) throw new InvalidOperationException("Invalid JSON.");
         return result;
     }
 
     private static string Text(Dictionary<string, object> source, string key)
     {
         var result = TextOrEmpty(source, key);
-        if (String.IsNullOrWhiteSpace(result)) throw new InvalidOperationException("Thiếu cấu hình " + key + ".");
+        if (String.IsNullOrWhiteSpace(result)) throw new InvalidOperationException("Missing configuration: " + key + ".");
         return result;
     }
 
@@ -212,14 +212,14 @@ internal static class NOTAUpdater
     {
         object value;
         if (!source.TryGetValue(key, out value) || !(value is IEnumerable))
-            throw new InvalidOperationException("Thiếu cấu hình " + key + ".");
+            throw new InvalidOperationException("Missing configuration: " + key + ".");
         var result = new List<string>();
         foreach (var item in (IEnumerable)value)
         {
             var text = Convert.ToString(item);
             if (!String.IsNullOrWhiteSpace(text)) result.Add(text);
         }
-        if (result.Count == 0) throw new InvalidOperationException("Cấu hình " + key + " đang trống.");
+        if (result.Count == 0) throw new InvalidOperationException("Configuration " + key + " is empty.");
         return result;
     }
 
@@ -228,7 +228,7 @@ internal static class NOTAUpdater
         var input = Console.OpenStandardInput();
         var header = ReadExactly(input, 4);
         var length = BitConverter.ToInt32(header, 0);
-        if (length <= 0 || length > 1024 * 1024) throw new InvalidOperationException("Kích thước message không hợp lệ.");
+        if (length <= 0 || length > 1024 * 1024) throw new InvalidOperationException("Invalid message size.");
         return ReadObject(Encoding.UTF8.GetString(ReadExactly(input, length)));
     }
 
@@ -239,7 +239,7 @@ internal static class NOTAUpdater
         while (offset < length)
         {
             var count = stream.Read(result, offset, length - offset);
-            if (count <= 0) throw new EndOfStreamException("Message bị thiếu dữ liệu.");
+            if (count <= 0) throw new EndOfStreamException("The message data is incomplete.");
             offset += count;
         }
         return result;

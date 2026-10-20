@@ -60,8 +60,8 @@ async function requestStoreUpdate() {
     const result = await chrome.runtime.requestUpdateCheck();
     if (result?.status !== "update_available") return false;
     button.disabled = true;
-    button.textContent = `Đang cập nhật ${result.version || "bản mới"}…`;
-    show("Chrome đã tìm thấy bản Store mới và đang tải. Extension sẽ khởi động lại để áp dụng.", "ok");
+    button.textContent = `Updating ${result.version || "to the latest version"}…`;
+    show("Chrome found a new Store version and is downloading it. The extension will reload to apply it.", "ok");
     setTimeout(() => chrome.runtime.reload(), 800);
     return true;
   } catch (_) {
@@ -77,45 +77,45 @@ async function checkGitHubRelease() {
   if (!response.ok) throw new Error(`GitHub HTTP ${response.status}`);
   const release = await response.json();
   const latestVersion = String(release.tag_name || release.name || "").replace(/^v/i, "");
-  if (!latestVersion) throw new Error("Release chưa có số phiên bản");
+  if (!latestVersion) throw new Error("The release has no version number");
   if (compareVersions(latestVersion, currentVersion) <= 0) {
-    button.textContent = `Đã cập nhật v${currentVersion}`;
+    button.textContent = `Up to date: v${currentVersion}`;
     button.disabled = true;
-    show("Bạn đang dùng phiên bản mới nhất trên GitHub.", "ok");
+    show("You have the latest version on GitHub.", "ok");
     return;
   }
   button.dataset.latestVersion = latestVersion;
-  button.textContent = `Update ngay v${latestVersion}`;
+  button.textContent = `Update now to v${latestVersion}`;
   show(setupButton.hidden
-    ? `Có bản v${latestVersion}. Bấm Update ngay để tự cập nhật và reload.`
-    : `Có bản v${latestVersion}. Cài NOTA Updater một lần, sau đó chỉ cần bấm Update ngay.`, "warn");
+    ? `Version ${latestVersion} is available. Click Update now to install it and reload.`
+    : `Version ${latestVersion} is available. Set up NOTA Updater once, then click Update now.`, "warn");
 }
 
 async function runNativeUpdate() {
   const expectedVersion = button.dataset.latestVersion;
   button.disabled = true;
-  button.textContent = `Đang update v${expectedVersion}…`;
-  show("Đang tải Release, kiểm tra SHA256 và thay file extension…");
+  button.textContent = `Updating to v${expectedVersion}…`;
+  show("Downloading the release, verifying SHA256, and replacing extension files…");
   try {
     const response = await sendNative({ action: "update", expectedVersion });
-    if (!response?.ok) throw new Error(response?.message || "Updater trả về lỗi");
+    if (!response?.ok) throw new Error(response?.message || "The updater returned an error");
     const installedVersion = response.version || currentVersion;
     const runtimeIsStale = compareVersions(installedVersion, currentVersion) > 0;
     if (response.status === "updated" || runtimeIsStale) {
-      button.textContent = `Đang nạp v${installedVersion}…`;
+      button.textContent = `Loading v${installedVersion}…`;
       show(response.status === "updated"
-        ? "Cập nhật hoàn tất. Extension đang nạp phiên bản mới…"
-        : `File v${installedVersion} đã có trên máy. Extension đang nạp lại để thay runtime v${currentVersion}…`, "ok");
+        ? "Update complete. Loading the new extension version…"
+        : `Version ${installedVersion} is already on disk. Reloading the extension to replace running version ${currentVersion}…`, "ok");
       setTimeout(() => chrome.runtime.reload(), 700);
       return;
     }
-    button.textContent = `Đã cập nhật v${installedVersion}`;
-    show("Bạn đang dùng phiên bản mới nhất.", "ok");
+    button.textContent = `Up to date: v${installedVersion}`;
+    show("You have the latest version.", "ok");
   } catch (error) {
     button.disabled = false;
-    button.textContent = `Thử update lại v${expectedVersion}`;
+    button.textContent = `Retry update to v${expectedVersion}`;
     setupButton.hidden = false;
-    show(`Chưa dùng được NOTA Updater: ${error.message}`, "err");
+    show(`NOTA Updater is unavailable: ${error.message}`, "err");
     openUpdaterSetup();
   }
 }
@@ -128,16 +128,16 @@ button.addEventListener("click", async () => {
     return;
   }
   button.disabled = true;
-  button.textContent = "Đang kiểm tra…";
-  show("Đang kiểm tra Chrome Web Store và GitHub…");
+  button.textContent = "Checking…";
+  show("Checking the Chrome Web Store and GitHub…");
   if (await requestStoreUpdate()) return;
   try {
     await checkGitHubRelease();
   } catch (error) {
-    button.textContent = "Thử kiểm tra lại";
-    show(`Không kiểm tra được GitHub: ${error.message}`, "err");
+    button.textContent = "Check again";
+    show(`Could not check GitHub: ${error.message}`, "err");
   } finally {
-    if (!button.textContent.startsWith("Đã cập nhật") && !button.textContent.startsWith("Đang cập nhật")) {
+    if (!button.textContent.startsWith("Up to date:") && !button.textContent.startsWith("Updating")) {
       button.disabled = false;
     }
   }

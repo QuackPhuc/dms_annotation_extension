@@ -1,30 +1,30 @@
 <!doctype html>
-<html lang="vi">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cài NOTA Updater</title>
+  <title>Set up NOTA Updater</title>
   <style>
     body{max-width:760px;margin:40px auto;padding:0 24px;background:#111318;color:#f4f4f5;font:16px/1.55 system-ui,sans-serif}
     h1{color:#d946ef}code{background:#252933;padding:2px 6px;border-radius:5px}li{margin:12px 0}.box{border:1px solid #7e22ce;background:#21142b;padding:16px 20px;border-radius:10px}
   </style>
 </head>
 <body>
-  <h1>Cài NOTA Updater một lần</h1>
-  <div class="box">Sau bước này, các phiên bản sau chỉ cần bấm <b>Update ngay</b>. Updater tự tải đúng GitHub Release, kiểm tra SHA256, thay file và reload extension.</div>
+  <h1>Set up NOTA Updater once</h1>
+  <div class="box">After setup, click <b>Update now</b> for future versions. The updater downloads the GitHub release, verifies SHA256, replaces the files, and reloads the extension. Reload your DMS tab afterward.</div>
   <h2>Windows</h2>
   <ol>
-    <li>Mở thư mục bản extension đang được <b>Load unpacked</b>.</li>
+    <li>Open the extension folder you selected with <b>Load unpacked</b>.</li>
     <li>Double-click file <code>Install-NOTA-Updater.cmd</code>.</li>
-    <li>Nếu cửa sổ yêu cầu Extension ID, mở <code>chrome://extensions</code>, bật <b>Developer mode</b> và dán ID nằm dưới tên NOTA Labeling Organizer.</li>
-    <li>Chờ cửa sổ báo <b>Hoàn tất</b>, rồi đóng và mở lại popup extension.</li>
+    <li>If asked for an Extension ID, open <code>chrome://extensions</code>, enable <b>Developer mode</b>, and paste the ID shown below NOTA Labeling Organizer.</li>
+    <li>Wait for <b>Done</b>, then close and reopen the extension popup.</li>
   </ol>
   <h2>macOS / MacBook</h2>
   <ol>
-    <li>Mở thư mục bản extension đang được <b>Load unpacked</b>.</li>
-    <li>Right-click file <code>Install-NOTA-Updater.command</code>, chọn <b>Open</b>, rồi chọn <b>Open</b> lần nữa nếu macOS hỏi.</li>
-    <li>Chờ Terminal báo đã cài xong, nhấn Enter, rồi đóng và mở lại popup extension.</li>
+    <li>Open the extension folder you selected with <b>Load unpacked</b>. Use the GitHub release ZIP, which includes the macOS updater binary.</li>
+    <li>Right-click <code>Install-NOTA-Updater.command</code>, select <b>Open</b>, and select <b>Open</b> again if macOS asks.</li>
+    <li>Wait for Terminal to confirm installation, press Enter, then close and reopen the extension popup.</li>
   </ol>
-  <p>Không cần quyền Administrator. Bộ cài tự tìm ID của thư mục đang được Load unpacked và native host chỉ nhận lệnh từ đúng extension đó.</p>
+  <p>No administrator access is needed. The installer detects the ID associated with this unpacked folder; the native host accepts requests only from that extension.</p>
 </body>
 </html>

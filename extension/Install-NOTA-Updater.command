@@ -13,19 +13,19 @@ config_path="$install_root/config.json"
 host_manifest="$install_root/$host_name.json"
 
 pause_terminal() {
-  printf '\nNhan Enter de dong cua so nay...'
+  printf '\nPress Enter to close this window...'
   read -r _
 }
 
 fail() {
-  printf '\nCai dat that bai: %s\n' "$1" >&2
+  printf '\nInstallation failed: %s\n' "$1" >&2
   pause_terminal
   exit 1
 }
 
-[[ -f "$extension_root/manifest.json" ]] || fail "Khong tim thay manifest.json trong $extension_root"
-[[ -x "$source_host" ]] || fail "Goi nay chua co NOTAUpdater-macos. Hay tai dung file ZIP trong GitHub Release moi nhat."
-[[ -f "$finder_script" ]] || fail "Thieu Find-NOTA-Extension.js"
+[[ -f "$extension_root/manifest.json" ]] || fail "Cannot find manifest.json in $extension_root"
+[[ -x "$source_host" ]] || fail "This package has no NOTAUpdater-macos binary. Download the ZIP from the latest GitHub release."
+[[ -f "$finder_script" ]] || fail "Missing Find-NOTA-Extension.js"
 
 extension_ids=()
 if [[ "${1:-}" =~ ^[a-p]{32}$ ]]; then extension_ids+=("$1"); fi
@@ -57,10 +57,10 @@ if [[ ${#preference_files[@]} -gt 0 ]]; then
 fi
 
 if [[ ${#extension_ids[@]} -eq 0 ]]; then
-  printf 'Khong tu tim thay Extension ID. Mo chrome://extensions, bat Developer mode va copy ID cua NOTA Labeling Organizer.\n'
-  printf 'Nhap Extension ID: '
+  printf 'Cannot find the Extension ID automatically. Open chrome://extensions, enable Developer mode, and copy the NOTA Labeling Organizer ID.\n'
+  printf 'Enter Extension ID: '
   read -r manual_id
-  [[ "$manual_id" =~ ^[a-p]{32}$ ]] || fail "Extension ID khong hop le."
+  [[ "$manual_id" =~ ^[a-p]{32}$ ]] || fail "Invalid Extension ID."
   extension_ids+=("$manual_id")
 fi
 
@@ -104,8 +104,8 @@ if [[ $installed_manifests -eq 0 ]]; then
   /bin/cp -f "$host_manifest" "$native_dir/$host_name.json"
 fi
 
-printf '\nDa cai NOTA Updater cho macOS.\n'
+printf '\nNOTA Updater installed for macOS.\n'
 printf 'Extension: %s\n' "$extension_root"
 printf 'Extension ID: %s\n' "${extension_ids[*]}"
-printf 'Dong popup, mo lai va bam Kiem tra update.\n'
+printf 'Close and reopen the popup, then click Check for updates.\n'
 pause_terminal

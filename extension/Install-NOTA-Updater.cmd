@@ -7,9 +7,9 @@ if "%~1"=="" (
 )
 if errorlevel 1 (
   echo.
-  echo Cai dat that bai. Vui long chup man hinh loi nay.
+  echo Installation failed. Please capture the error shown above.
 ) else (
   echo.
-  echo Hoan tat. Tu lan sau chi can bam Update ngay trong extension.
+  echo Done. For future updates, click Update now in the extension.
 )
 pause

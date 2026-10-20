@@ -19,6 +19,6 @@ done
 
 expected="$HOME/Library/Application Support/NOTA/LabelingUpdater"
 if [[ -d "$install_root" && "$install_root" == "$expected" ]]; then /bin/rm -rf "$install_root"; fi
-printf 'NOTA Updater da duoc go khoi macOS.\n'
-printf 'Nhan Enter de dong cua so nay...'
+printf 'NOTA Updater removed from macOS.\n'
+printf 'Press Enter to close this window...'
 read -r _

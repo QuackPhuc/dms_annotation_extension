@@ -1,82 +1,141 @@
 # NOTA Labeling Organizer
 
-Chrome extension hỗ trợ sắp xếp frame theo clip và thao tác nhãn nhanh trên DMS Labeling.
+A Chrome extension for faster annotation in **DMS Labeling**. Group frames by clip, edit labels with keyboard shortcuts, and repeat changes across multiple frames.
 
-Phiên bản hiện tại: **1.6.17**
+**Version: 1.6.18 · English**
 
-[Tải bản mới nhất](https://github.com/tanmainhat0502/dms_annotation_extension/releases/latest)
+[Download the latest release](https://github.com/tanmainhat0502/dms_annotation_extension/releases/latest) · [Detailed usage guide](extension/README.md) · [Changelog](CHANGELOG.md)
 
-## Chức năng chính
+## Install in Chrome
 
-- Gom frame theo part và clip, tìm kiếm part nhanh.
-- Di chuyển đúng thứ tự bằng `A`, `D`, `Shift+A`, `Shift+D` và `Space`.
-- Đổi trạng thái toàn bộ clip giữa **Done**, **Not checked** và **In progress**.
-- Sao chép hàng loạt bằng `Ctrl+B` cho seatbelt, eye 15pt, bbox, face 7pt và các loại nhãn còn lại.
-- Tạo bbox bằng `N` với hai lần click, không cần giữ chuột; vẽ vùng xóa bằng `M`.
-- Khi kéo bbox vượt biên ảnh, phần ngoài ảnh được cắt tại mép khi thả chuột giống CVAT.
-- `Ctrl+B` với box đang chọn đối chiếu cả bố cục box ở frame nguồn để thay box tương ứng, kể cả box hẹp cần mở rộng. Các box gần trùng cùng vị trí được gộp thành một box vừa copy; box nhỏ nằm trong box lớn và các đối tượng khác vẫn được phân biệt riêng. Nếu không có box khớp thì thêm box mới.
-- Hai bbox có IoU từ 90% được cảnh báo màu đỏ; góc ảnh luôn hiện số bbox và thanh part hiện tổng số ảnh.
-- Body/hand/eye box có bộ phím thao tác nhanh: `X` xóa mọi box, `1`/`2` xóa box trái/phải, `C` lấy toàn bộ box của frame vừa xem, cùng clipboard, đánh dấu, xử lý hàng loạt và hoàn tác.
-- Body cho phép double-click rồi kéo riêng một cạnh; `Ctrl+B` tìm box tương ứng theo hình dạng trước/sau chỉnh, đặt cạnh đó tại vị trí tuyệt đối của đường xanh và giữ ba cạnh còn lại. Nếu frame đích thiếu box tương ứng, thêm box nguồn đã chỉnh và giữ các box khác.
-- Chỉnh eye 15pt theo cả cụm: di chuyển, xoay và co giãn.
-- Ẩn/hiện nhãn bằng `K` khi cần quan sát ảnh rõ hơn.
-- Kiểm tra phiên bản mới ngay trong popup của extension.
+### 1. Download and extract
 
-Hướng dẫn đầy đủ nằm trong [extension/README.md](extension/README.md).
+Download `NOTA_Labeling_Organizer_Extension_vX.Y.Z.zip` from [Releases](https://github.com/tanmainhat0502/dms_annotation_extension/releases/latest) and extract it into a permanent folder.
 
-## Cài đặt
+The screenshots below show version 1.6.17. Follow the same steps with the latest version.
 
-1. Mở trang [Releases](https://github.com/tanmainhat0502/dms_annotation_extension/releases/latest).
-2. Tải file `NOTA_Labeling_Organizer_Extension_vX.Y.Z.zip` và giải nén.
-3. Mở `chrome://extensions`.
-4. Bật **Developer mode**.
-5. Chọn **Load unpacked** và mở thư mục vừa giải nén.
-6. Tải lại trang DMS.
+### 2. Enable Developer mode
 
-Có thể clone repository rồi chọn trực tiếp thư mục `extension` ở bước 5.
+Open `chrome://extensions` in Chrome. Turn on **Developer mode** at the top right.
 
-## Cập nhật một click trên Windows và macOS
+![Chrome Extensions page with the Developer mode switch at the top right](docs/images/01-developer-mode.png)
 
-Chrome không cho bản `Load unpacked` tự thay mã nguồn nếu chỉ dùng API extension. **NOTA Updater** chạy cục bộ qua Native Messaging để thay file trên Windows hoặc macOS.
+### 3. Click Load unpacked
 
-Thiết lập một lần:
+The **Load unpacked** button appears at the top left when Developer mode is enabled.
 
-1. Cài bản 1.6.17 vào một thư mục cố định bằng **Load unpacked**.
-2. Trên Windows, double-click `Install-NOTA-Updater.cmd`. Trên MacBook, right-click `Install-NOTA-Updater.command` và chọn **Open**.
-3. Đóng và mở lại popup. Nút **Cài update một lần** sẽ biến mất khi updater sẵn sàng.
+![Load unpacked button at the top left of the Extensions page](docs/images/02-load-unpacked.png)
 
-Từ phiên bản sau:
+### 4. Select the extension folder
 
-1. Bấm **Kiểm tra update**.
-2. Khi có bản mới, bấm **Update ngay vX.Y.Z**.
-3. Updater tải GitHub Release, kiểm tra SHA256, thay file và reload extension tự động.
+Choose the extracted folder that contains `manifest.json`, then click **Select Folder**. If you cloned or downloaded this repository, select its **extension** folder.
 
-Updater không cần quyền Administrator. Bộ cài đọc cả `Preferences` và `Secure Preferences` của các Chrome profile để tìm ID gắn với đúng thư mục đang được **Load unpacked**. Nếu Chrome không cho tự dò, bộ cài sẽ yêu cầu dán ID đang hiển thị tại `chrome://extensions`. Native host chỉ nhận lệnh từ ID đó. Bản macOS là universal binary, chạy trên cả Apple Silicon và Intel. Nếu extension được cài từ Chrome Web Store, Chrome vẫn dùng cơ chế cập nhật Store chính thức.
+![Select the extracted NOTA Labeling Organizer folder and click Select Folder](docs/images/03-select-folder.png)
 
-## Cấu trúc repository
+### 5. Confirm it is enabled
 
-```text
-extension/              Mã nguồn có thể Load unpacked
-dist/                   ZIP phát hành hiện tại
-native-updater/         Mã nguồn updater Windows và macOS
-scripts/package.ps1     Đóng gói ZIP theo version trong manifest
-.github/workflows/      Tự tạo GitHub Release khi push tag vX.Y.Z
-```
+Find **NOTA Labeling Organizer** and check that its switch is on. Keep only one Organizer version enabled.
 
-## Tạo phiên bản mới
+![NOTA Labeling Organizer installed with its enable switch on](docs/images/04-extension-enabled.png)
 
-1. Sửa mã nguồn trong `extension` và tăng `version` trong `extension/manifest.json`.
-2. Chạy `powershell -ExecutionPolicy Bypass -File scripts/package.ps1`.
-3. Commit và push thay đổi.
-4. Tạo tag trùng với version, ví dụ `git tag v1.5.7` rồi `git push origin v1.5.7`.
+### 6. Pin it and open DMS
 
-GitHub Actions sẽ kiểm tra tag, đóng gói thư mục `extension` và tạo Release kèm ZIP. Popup kiểm tra Release mới qua GitHub API; NOTA Updater tải và áp dụng gói này.
+Click Chrome's **Extensions** puzzle icon, then the pin beside **NOTA Labeling Organizer**. Click the extension icon to open its help and update controls.
 
-## Phạm vi truy cập
+![Chrome Extensions menu showing NOTA Labeling Organizer and its pin button](docs/images/05-pin-extension.png)
 
-Extension chỉ chạy trên:
+Reload your DMS tab and open **Labeling**. Search for a part, expand a clip such as `#01`, and select a frame.
+
+## What it does
+
+| Feature | How it works |
+| --- | --- |
+| Organize frames | Search part names, group frames by clip, and see frame counts and the last edited checkpoint. Navigation follows the filtered list. |
+| Set clip status | Click **Done**, **Not checked**, or **In progress** on a clip to apply that status to every frame in it. |
+| Edit bounding boxes | Press `N` and click two opposite corners to create a box. Use `M` to draw a region that deletes boxes inside it. Boxes dragged outside the image are clipped on release. |
+| Copy annotations | Press `Ctrl+B` to copy boxes, eye 15pt, face 7pt, or seatbelt edits to previous/next frames. Enter a frame count or `end` to reach the clip boundary. |
+| Copy one box | Select a box, then use `Ctrl+B`. Matching target boxes are replaced and duplicates merged; other objects stay. If there is no match, a new box is added. Choosing all boxes replaces the entire target box list. |
+| Adjust a body edge | Double-click an edge handle and drag it. `Ctrl+B` applies that edge's exact position to matching boxes, preserving their other three edges. A missing match adds the edited source box. |
+| Edit seatbelt masks | Draw an add polygon with `N`, erase with `M`, or accept a green SAM3 preview with `R`. Bulk edits can use just the latest change or the entire mask. |
+| Transform eye 15pt | Drag inside the dashed box to move the eye, `Ctrl` + drag to rotate, or drag its handles to resize all 15 points. |
+| Review and undo | Mark frames with `V`, repeat bbox operations on marked frames, or reopen selected Done frames. `Z` undoes edits; one bbox undo can restore an entire batch. |
+
+**Bulk editing:** the frame count excludes the current frame. Previous/next operations stay inside the current clip and skip **Done** frames. Saved **Not checked** frames become **In progress**. For body/hand/eye boxes, marked targets may span clips within the same session and label.
+
+**Box matching uses geometry**, not visual object recognition. Boxes that overlap by at least 90% IoU are highlighted red. The image also shows a bbox count.
+
+## Keyboard shortcuts
+
+Use these on the labeling canvas, outside text fields. On macOS, `Cmd+B`, `Cmd+C`, and `Cmd+V` also work for the extension's bulk and clipboard actions.
+
+### Navigation and common actions
+
+| Shortcut | Action |
+| --- | --- |
+| `A` / `D` | Previous / next frame in the visible list. |
+| `Shift+A` / `Shift+D` | Move backward / forward 10 frames. |
+| `Space` | Play / pause; playback stops at the end of the visible list. |
+| `F` | Toggle the current frame between Done and In progress. |
+| `K` | Show / hide seatbelt masks or eye 15pt without changing data. |
+| `Ctrl+B` | Open the bulk action dialog for the current label or pending edit. |
+| `V` | Body/hand/eye boxes: mark a target frame. Other labels: select a Done frame to reopen with `Ctrl+B`. |
+| `Enter` | Apply the action in an open bulk dialog. |
+| `Esc` | Cancel drawing or a pending bulk edit; in the part search field, clear the filter. Already saved edits require Undo. |
+
+### Bounding boxes
+
+| Shortcut / gesture | Action |
+| --- | --- |
+| `N` | Click one corner, then the opposite corner to create a box. No mouse hold needed. |
+| `M` | Draw a red delete region; right-click or click its first point to close it. `Esc` exits. |
+| `X` / `Shift+X` | Body/hand/eye: delete all boxes / delete all and move to the next frame. |
+| `1` / `2` | Body/hand/eye: delete the leftmost / rightmost box. |
+| `C` / `Shift+C` | Body/hand/eye: copy all boxes from the previously viewed frame / copy and move to the next frame. |
+| `Ctrl+C` / `Ctrl+V` | Body/hand/eye: copy / paste the selected box, or all boxes when none is selected. |
+| `Z` | Body/hand/eye: undo the latest operation, including a whole bulk batch. |
+| Double-click an edge handle, then drag | Body: adjust one edge; use `Ctrl+B` to repeat its position across frames. |
+
+### Seatbelt and eye 15pt
+
+| Shortcut / gesture | Action |
+| --- | --- |
+| `N` / `M` (`Shift+N` also erases) | Seatbelt: draw an add / erase polygon. Close it with a right-click on the image or a click on its first point. |
+| Left-click / right-click | 1 Point SAM: add a positive / negative prompt. |
+| `R` or `Enter` / **Add** | Add the ready green SAM3 preview to the mask. |
+| `Shift+Enter` / **Subtract** | Remove the green SAM3 preview area from the mask. |
+| `Z` | Seatbelt: remove the last polygon point, or undo the latest mask edit on this frame. |
+| Drag inside the dashed eye box | Move all 15 eye points. |
+| `Ctrl` + drag inside the eye box | Rotate all 15 eye points. |
+| Drag an eye edge / corner handle | Resize the eye group; dragging an individual point edits only that point. |
+
+## Updates
+
+For one-click updates, install **NOTA Updater** once from the extracted release folder:
+
+- **Windows:** double-click `Install-NOTA-Updater.cmd`.
+- **macOS:** right-click `Install-NOTA-Updater.command` → **Open**. Use the release ZIP, which includes the macOS binary.
+
+If asked for an extension ID, copy it from `chrome://extensions`. Reopen the popup, click **Check for updates**, then **Update now**. The updater downloads the release, verifies SHA256, replaces files, and reloads the extension. No administrator access is needed.
+
+To update manually, extract the new ZIP into the same installation folder, click the extension's reload icon in `chrome://extensions`, then reload DMS. Reload DMS after a one-click update as well.
+
+## Supported pages and data
 
 - `https://ntt.dev.nota.ai/*`
 - `http://10.169.1.102:8765/*`
 
-Popup truy cập `https://api.github.com/*` chỉ để đọc thông tin Release mới nhất của repository này.
+Search, grouping, and label visibility change only the interface. Annotation edits and status actions save through the open DMS page. The popup reads this repository's releases through `api.github.com`; the native updater downloads release packages.
+
+## Development
+
+| Path | Contents |
+| --- | --- |
+| `extension/` | Extension source; load this folder in Chrome. |
+| `docs/images/` | Installation screenshots used above. |
+| `dist/` | Versioned release ZIPs. |
+| `native-updater/` | Windows and macOS updater source. |
+| `scripts/package.ps1` | Package the version from `extension/manifest.json`. |
+| `tests/` | Bbox matching and body edge regression checks. |
+| `.github/workflows/` | Build the macOS updater; publish releases on `vX.Y.Z` tags. |
+
+To release: update the version in `extension/manifest.json` and `extension/content.js`, update the docs/changelog, run `native-updater/build.ps1` if the Windows updater changed, then run `scripts/package.ps1`. Commit and push, then push a matching `vX.Y.Z` tag. GitHub Actions publishes the ZIP with Windows and universal macOS updaters.

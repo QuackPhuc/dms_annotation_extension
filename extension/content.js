@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.6.17";
+  const VERSION = "1.6.18";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";
@@ -456,8 +456,8 @@
     toolbar.innerHTML = `
       <div class="nl-search-wrap">
         <input class="nl-search" type="search" autocomplete="off" spellcheck="false"
-          aria-label="Tìm part" placeholder="Tìm part, ví dụ: ciga">
-        <button class="nl-clear" type="button" title="Xóa từ khóa" aria-label="Xóa từ khóa">×</button>
+          aria-label="Search parts" placeholder="Search parts, e.g. ciga">
+        <button class="nl-clear" type="button" title="Clear search" aria-label="Clear search">×</button>
       </div>
       <span class="nl-status" aria-live="polite"></span>
     `;
@@ -494,7 +494,7 @@
   }
 
   function getClipNo(li) {
-    return (li.querySelector(".no")?.textContent || "Không rõ clip").trim();
+    return (li.querySelector(".no")?.textContent || "Unknown clip").trim();
   }
 
   function getMeta(items) {
@@ -513,9 +513,9 @@
         checkpoint = index;
       }
     }
-    const pieces = [`${total} ảnh`];
+    const pieces = [`${total} frames`];
     if (done) pieces.push(`${done} xong`);
-    if (doing) pieces.push(`${doing} đang làm`);
+    if (doing) pieces.push(`${doing} in progress`);
     if (checkpoint >= 0) pieces.push(`📍 ${checkpoint + 1}/${total}`);
     return { total, done, doing, checkpoint, text: pieces.join(" · ") };
   }
@@ -785,7 +785,7 @@
     state.eyeGroupDrag = drag;
     try { if (typeof pause === "function") pause(); } catch (_) {}
     try { view.style.cursor = drag.cursor || "grabbing"; } catch (_) {}
-    if (drag.mode === "rotate") notify("Đang xoay cả cụm eye 15pt");
+    if (drag.mode === "rotate") notify("Rotating the entire eye 15pt group");
   }
 
   function onEyeGroupMouseMove(event) {
@@ -909,7 +909,7 @@
         if (panel && !panel.querySelector(".nl-eye-group-hint")) {
           const hint = document.createElement("div");
           hint.className = "nl-eye-group-hint";
-          hint.innerHTML = "Kéo trong khung: di chuyển cả mắt · <b>Ctrl + kéo</b>: xoay<br>Kéo ô vuông ở cạnh/góc: co giãn cả mắt";
+          hint.innerHTML = "Drag inside the box to move the eye · <b>Ctrl + drag</b> to rotate<br>Drag an edge or corner handle to resize the eye";
           panel.appendChild(hint);
         }
       }
@@ -1157,7 +1157,7 @@
         marker = document.createElement("span");
         marker.className = "nl-frame-mark";
         marker.textContent = bboxMode ? "◆ V" : "✓ V";
-        marker.title = "Frame đã được chọn bằng V";
+        marker.title = "Frame marked with V";
         const name = li.querySelector(".name");
         if (name) name.before(marker); else li.prepend(marker);
       } else if (!selected) marker?.remove();
@@ -1167,8 +1167,8 @@
     state.markedBadge.hidden = false;
     state.markedBadge.dataset.count = String(count);
     state.markedBadge.querySelector("b").textContent = bboxMode
-      ? `Đã đánh dấu ${count} frame ${S.labelSel} · V`
-      : `Đã chọn ${count} · V`;
+      ? `${count} ${S.labelSel} frames marked · V`
+      : `${count} selected · V`;
     state.markedBadge.querySelector("button").hidden = count === 0;
     positionMarkedBadge();
   }
@@ -1189,25 +1189,25 @@
     if (selectedFrames.has(g)) {
       selectedFrames.delete(g);
       updateMarkedUI();
-      notify(`Đã bỏ đánh dấu frame hiện tại · còn ${selectedFrames.size} frame`);
+      notify(`Current frame unmarked · ${selectedFrames.size} remaining`);
       return;
     }
     if (!bboxMode && frameState(g) !== "done") {
-      notify("Chỉ cần chọn frame đang Done; frame hiện tại đã có thể sửa");
+      notify("Only Done frames need reopening; this frame is already editable");
       return;
     }
     selectedFrames.add(g);
     updateMarkedUI();
     notify(bboxMode
-      ? `Đã đánh dấu ${selectedFrames.size} frame · Ctrl+B để áp dụng thao tác bbox gần nhất`
-      : `Đã chọn ${selectedFrames.size} frame · Ctrl+B để chuyển sang In progress`);
+      ? `${selectedFrames.size} frames marked · Ctrl+B to repeat the latest bbox operation`
+      : `${selectedFrames.size} frames selected · Ctrl+B to set In progress`);
   }
 
   function buildMarkedBadge() {
     const badge = document.createElement("div");
     badge.id = "nl-marked-frames";
     badge.dataset.count = "0";
-    badge.innerHTML = `<span class="nl-mark-box">✓</span><b>Đã chọn 0 · V</b><button type="button" hidden>Bỏ chọn tất cả</button>`;
+    badge.innerHTML = `<span class="nl-mark-box">✓</span><b>0 selected · V</b><button type="button" hidden>Clear selection</button>`;
     badge.querySelector("button").addEventListener("click", clearMarkedFrames);
     document.body.appendChild(badge);
     state.markedBadge = badge;
@@ -1387,7 +1387,7 @@
     const sourceList = row.querySelector(":scope > ul");
     if (!label || !sourceList) return;
 
-    const partName = (label.textContent || "Không rõ part").trim();
+    const partName = (label.textContent || "Unknown part").trim();
     const buckets = new Map();
     for (const li of Array.from(sourceList.children)) {
       if (li.tagName !== "LI") continue;
@@ -1399,8 +1399,8 @@
 
     const partTotal = document.createElement("span");
     partTotal.className = "nl-part-total";
-    partTotal.textContent = `${Array.from(buckets.values()).reduce((sum, items) => sum + items.length, 0)} ảnh`;
-    partTotal.title = `Tổng số ảnh của part ${partName}`;
+    partTotal.textContent = `${Array.from(buckets.values()).reduce((sum, items) => sum + items.length, 0)} frames`;
+    partTotal.title = `Total frames in part ${partName}`;
     label.appendChild(partTotal);
 
     // Move the large native list off the live document before redistributing
@@ -1438,11 +1438,11 @@
       const statusActions = document.createElement("div");
       statusActions.className = "nl-clip-status-actions";
       statusActions.setAttribute("role", "group");
-      statusActions.setAttribute("aria-label", `Đổi trạng thái toàn bộ clip ${no} · ${partName}`);
+      statusActions.setAttribute("aria-label", `Set status for the entire clip ${no} · ${partName}`);
       for (const [value, caption, title] of [
-        ["done", "Done", "Chuyển toàn bộ frame trong clip sang Done"],
-        ["todo", "Not checked", "Chuyển toàn bộ frame trong clip sang Not checked"],
-        ["wip", "In progress", "Chuyển toàn bộ frame trong clip sang In progress"]
+        ["done", "Done", "Set every frame in this clip to Done"],
+        ["todo", "Not checked", "Set every frame in this clip to Not checked"],
+        ["wip", "In progress", "Set every frame in this clip to In progress"]
       ]) {
         const button = document.createElement("button");
         button.type = "button";
@@ -1571,7 +1571,7 @@
   }
 
   async function saveFrameState(g, label, value, expectedGeneration) {
-    if (S.gen !== expectedGeneration) throw new Error("Session đã thay đổi");
+    if (S.gen !== expectedGeneration) throw new Error("The session has changed");
     const [segmentIndex, frameIndex] = loc(g);
     const segment = S.sess.segments[segmentIndex];
     const data = await requestJson("/api/frame_status", {
@@ -1586,7 +1586,7 @@
         state: value
       })
     });
-    if (S.gen !== expectedGeneration) throw new Error("Session đã thay đổi");
+    if (S.gen !== expectedGeneration) throw new Error("The session has changed");
     updateFrameState(g, label, value, data);
   }
 
@@ -1618,9 +1618,9 @@
         4
       );
       if (typeof fsRender === "function" && S.gen === generation) fsRender();
-      const action = value === "done" ? "Done" : value === "wip" ? "chuyển In progress" : "chuyển Not checked";
-      if (result.error) notify(`Đã ${action} ${result.completed}/${targets.length} frame; dừng vì lỗi: ${result.error.message}`);
-      else notify(`Đã ${action} ${targets.length} frame trong clip`);
+      const action = value === "done" ? "Done" : value === "wip" ? "In progress" : "Not checked";
+      if (result.error) notify(`Set ${result.completed}/${targets.length} frames to ${action}; stopped on error: ${result.error.message}`);
+      else notify(`Set ${targets.length} frames in this clip to ${action}`);
     } finally {
       state.operationBusy = false;
       delete control.dataset.busy;
@@ -1857,7 +1857,7 @@
 
   function deleteQuickBbox(selector, advance = false) {
     if (!quickBboxReady() || !bboxEditingAvailable() || !ED.items.length) {
-      notify("Frame hiện tại không có box có thể xóa");
+      notify("This frame has no boxes to delete");
       return false;
     }
     const items = cloneGenericItems(ED.items);
@@ -1871,7 +1871,7 @@
       let index = Number.isInteger(ED.hover?.n) ? ED.hover.n : Number.isInteger(ED.sel) && ED.sel >= 0 ? ED.sel : -1;
       if (items.length === 1) index = 0;
       if (index < 0 || index >= items.length) {
-        notify("Có nhiều box: hãy rê chuột lên box cần xóa rồi nhấn X");
+        notify("Multiple boxes: hover over the box to delete, then press X");
         return false;
       }
       indexes = [index];
@@ -1879,8 +1879,8 @@
     }
     const removed = new Set(indexes);
     const next = items.filter((_, index) => !removed.has(index));
-    const label = selector === "all" ? "toàn bộ box" : selector === "left" ? "box trái" : selector === "right" ? "box phải" : "box đã chọn";
-    const changed = replaceCurrentBboxItems(next, operation, `Đã xóa ${label} · Ctrl+B để xóa hàng loạt`);
+    const label = selector === "all" ? "all boxes" : selector === "left" ? "the leftmost box" : selector === "right" ? "the rightmost box" : "the selected box";
+    const changed = replaceCurrentBboxItems(next, operation, `Deleted ${label} · Ctrl+B to repeat across frames`);
     if (changed && advance) setTimeout(() => navigateOrganizedFrames(1), 40);
     return changed;
   }
@@ -1890,11 +1890,11 @@
     const previous = state.quickFramePrevious;
     if (!previous || previous.generation !== S.gen || previous.session !== S.sess ||
         previous.label !== S.labelSel || previous.g === Number(S.shownG)) {
-      notify("Chưa có frame vừa xem trước đó cùng label để sao chép");
+      notify("No previously viewed frame with the same label to copy from");
       return false;
     }
     const changed = replaceCurrentBboxItems(previous.items, { type: "copy" },
-      `Đã chép ${previous.items.length} box từ frame vừa xem`);
+      `Copied ${previous.items.length} boxes from the previously viewed frame`);
     if (changed && advance) setTimeout(() => navigateOrganizedFrames(1), 40);
     return changed;
   }
@@ -1915,15 +1915,15 @@
       rank: selected ? bboxHorizontalOrder(ED.items).findIndex((entry) => entry.index === selectedIndex) : -1
     };
     notify(selected
-      ? `Đã copy box ${S.labelSel} đang chọn · chuyển frame rồi nhấn Ctrl+V`
-      : `Đã copy ${ED.items.length} box ${S.labelSel} · chuyển frame rồi nhấn Ctrl+V`);
+      ? `Copied the selected ${S.labelSel} box · switch frames and press Ctrl+V`
+      : `Copied ${ED.items.length} ${S.labelSel} boxes · switch frames and press Ctrl+V`);
   }
 
   function pasteQuickBboxFromClipboard() {
     const clipboard = state.bboxClipboard;
     if (!quickBboxReady() || !bboxEditingAvailable()) return;
     if (!clipboard || clipboard.session !== S.sess || clipboard.label !== S.labelSel) {
-      notify(`Clipboard chưa có box ${S.labelSel}`);
+      notify(`The clipboard has no ${S.labelSel} boxes`);
       return;
     }
     let nextItems = clipboard.items;
@@ -1932,8 +1932,8 @@
       nextItems = mergeCopiedGenericBbox(ED.items, copied, clipboard.sourceItems);
     }
     replaceCurrentBboxItems(nextItems, { type: "copy" }, clipboard.mode === "selected"
-      ? `Đã dán box ${S.labelSel} · thay box trùng hoặc thêm box mới`
-      : `Đã dán ${clipboard.items.length} box ${S.labelSel}`);
+      ? `Pasted the ${S.labelSel} box · replaced a matching box or added a new one`
+      : `Pasted ${clipboard.items.length} ${S.labelSel} boxes`);
   }
 
   async function undoQuickBbox() {
@@ -1945,7 +1945,7 @@
       index -= 1;
     }
     if (index < 0) {
-      notify(`Không còn thao tác ${S.labelSel} để hoàn tác`);
+      notify(`No more ${S.labelSel} operations to undo`);
       return;
     }
     const [entry] = state.bboxUndo.splice(index, 1);
@@ -1967,10 +1967,10 @@
       state.bodyEdgePatch = null;
       if (typeof fsRender === "function") fsRender();
       if (typeof edRepaint === "function") edRepaint();
-      notify(`Đã hoàn tác ${entry.frames.length > 1 ? `cả đợt ${entry.frames.length} frame` : "thao tác gần nhất"}`);
+      notify(`Undid ${entry.frames.length > 1 ? `the entire batch of ${entry.frames.length} frames` : "the latest operation"}`);
     } catch (error) {
       state.bboxUndo.splice(index, 0, entry);
-      notify(`Không hoàn tác được: ${error.message}`);
+      notify(`Could not undo: ${error.message}`);
     } finally {
       state.operationBusy = false;
     }
@@ -2022,7 +2022,7 @@
     ED.sel = geometry.itemIndex;
     ED.selSet?.clear();
     if (typeof edRepaint === "function") edRepaint();
-    notify(`Đã chọn cạnh ${geometry.edge} màu xanh · kéo cạnh rồi nhấn Ctrl+B`);
+    notify(`Selected the blue ${geometry.edge} edge · drag it, then press Ctrl+B`);
   }
 
   function finalizeBodyEdgePatch() {
@@ -2052,7 +2052,7 @@
       source: patch.g,
       value: next[patch.coord]
     };
-    notify(`Đã đặt cạnh ${patch.edge} tại ${next[patch.coord].toFixed(1)} px · Ctrl+B để áp dụng đúng vị trí này`);
+    notify(`Set the ${patch.edge} edge to ${next[patch.coord].toFixed(1)} px · Ctrl+B to apply this position`);
   }
 
   function drawBodyEdgePatch() {
@@ -2108,7 +2108,7 @@
         state.bboxMode = null;
         setTimeout(() => {
           if (typeof ED !== "undefined" && ED.items?.includes(item)) {
-            notify("Đã tạo box mới · Ctrl+B để sao chép box này");
+            notify("Created a box · Ctrl+B to copy it");
           } else if (state.lastCreatedBox?.item === item) {
             state.lastCreatedBox = null;
           }
@@ -2199,8 +2199,8 @@
     if (canvas) canvas.style.cursor = "crosshair";
     if (typeof edRepaint === "function") edRepaint();
     notify(mode === "create"
-      ? "Tạo box: click góc đầu, di chuyển chuột rồi click góc đối diện"
-      : "Xóa box: chấm polygon rồi click điểm đầu hoặc chuột phải · Esc để thoát");
+      ? "Create a box: click one corner, move the pointer, then click the opposite corner"
+      : "Delete boxes: draw a polygon, then click its first point or right-click · Esc to exit");
   }
 
   function updateBboxCreateDraft(event) {
@@ -2224,7 +2224,7 @@
     const widthOnCanvas = Math.abs(draft.currentCanvas[0] - draft.startCanvas[0]);
     const heightOnCanvas = Math.abs(draft.currentCanvas[1] - draft.startCanvas[1]);
     if (widthOnCanvas < 4 || heightOnCanvas < 4) {
-      notify("Box quá nhỏ · di chuyển chuột xa hơn rồi click lại");
+      notify("Box too small · move the pointer farther away and click again");
       return true;
     }
     const width = Number(S.sess?.src_w) || 0;
@@ -2257,7 +2257,7 @@
     try { if (typeof lsTouch === "function") lsTouch(); } catch (_) {}
     if (typeof edSave === "function") edSave();
     if (typeof edRepaint === "function") edRepaint();
-    notify("Đã tạo box mới · Ctrl+B để sao chép box này");
+    notify("Created a box · Ctrl+B to copy it");
     return true;
   }
 
@@ -2270,7 +2270,7 @@
   function commitBboxDeletePolygon() {
     if (!bboxEditingAvailable() || state.bboxMode !== "delete") return;
     if (!Array.isArray(ED.poly) || ED.poly.length < 3) {
-      notify("Vùng xóa cần ít nhất 3 điểm");
+      notify("The delete region needs at least 3 points");
       return;
     }
     const points = ED.poly.map((point) => point.slice());
@@ -2307,8 +2307,8 @@
     if (typeof lsTouch === "function") lsTouch();
     if (typeof edRepaint === "function") edRepaint();
     notify(removed.length
-      ? `Đã xóa ${removed.length} box · tiếp tục vẽ vùng khác hoặc nhấn Esc`
-      : "Không có box nào trong vùng xóa · tiếp tục vẽ hoặc nhấn Esc");
+      ? `Deleted ${removed.length} boxes · draw another region or press Esc`
+      : "No boxes in the delete region · keep drawing or press Esc");
   }
 
   function onBboxMouseDown(event) {
@@ -2322,7 +2322,7 @@
     if (state.bboxMode && !bboxEditingAvailable()) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      notify("Frame cần ở trạng thái In progress để sửa bbox");
+      notify("Set the frame to In progress before editing boxes");
       return;
     }
     if (!bboxEditingAvailable()) return;
@@ -2375,13 +2375,13 @@
         currentCanvas: point.canvasPoint.slice()
       };
       if (typeof edRepaint === "function") edRepaint();
-      notify("Đã đặt góc đầu · di chuyển chuột rồi click để hoàn tất box");
+      notify("First corner placed · move the pointer and click to finish the box");
       return;
     }
     if (event.shiftKey) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      notify("Nhấn N, click góc đầu rồi click góc đối diện để tạo box mới");
+      notify("Press N, click one corner, then the opposite corner to create a box");
     }
   }
 
@@ -2516,35 +2516,35 @@
     dialog.className = "nl-bulk-dialog";
     dialog.innerHTML = `
       <form class="nl-modal" method="dialog">
-        <h2>Sao chép eye 15pt theo clip</h2>
+        <h2>Copy eye 15pt across a clip</h2>
         <p class="nl-sub"></p>
 
-        <span class="nl-label">Hướng áp dụng</span>
+        <span class="nl-label">Target direction</span>
         <div class="nl-choice nl-directions">
-          <button type="button" data-eye-direction="before">← Các frame trước</button>
-          <button type="button" data-eye-direction="after">Các frame sau →</button>
-          <button type="button" data-eye-direction="marked" class="nl-marked-target" hidden>◆ Frame đã đánh dấu</button>
+          <button type="button" data-eye-direction="before">← Previous frames</button>
+          <button type="button" data-eye-direction="after">Next frames →</button>
+          <button type="button" data-eye-direction="marked" class="nl-marked-target" hidden>◆ Marked frames</button>
         </div>
 
-        <span class="nl-label nl-source-label">Đối tượng nguồn</span>
+        <span class="nl-label nl-source-label">Source objects</span>
         <div class="nl-scope">
-          <label class="nl-eye-selected-option"><input type="radio" name="nl-eye-scope" value="selected"><span class="nl-item-selected-text">Chỉ mắt đang chọn</span></label>
-          <label><input type="radio" name="nl-eye-scope" value="all"><span class="nl-item-all-text">Tất cả mắt của frame hiện tại</span></label>
+          <label class="nl-eye-selected-option"><input type="radio" name="nl-eye-scope" value="selected"><span class="nl-item-selected-text">Selected eye only</span></label>
+          <label><input type="radio" name="nl-eye-scope" value="all"><span class="nl-item-all-text">All eyes in the current frame</span></label>
         </div>
 
-        <span class="nl-label nl-write-label">Cách ghi vào frame đích</span>
+        <span class="nl-label nl-write-label">How to update target frames</span>
         <div class="nl-scope nl-write-options">
-          <label><input type="radio" name="nl-eye-write" value="merge" checked><span class="nl-item-merge-text">Thay mắt cùng vị trí và giữ các mắt còn lại</span></label>
-          <label><input type="radio" name="nl-eye-write" value="replace"><span class="nl-item-replace-text">Thay toàn bộ mắt ở frame đích</span></label>
+          <label><input type="radio" name="nl-eye-write" value="merge" checked><span class="nl-item-merge-text">Replace matching eyes and keep the others</span></label>
+          <label><input type="radio" name="nl-eye-write" value="replace"><span class="nl-item-replace-text">Replace all eyes in target frames</span></label>
         </div>
 
-        <label class="nl-label" for="nl-eye-bulk-count">Số frame đích hoặc end</label>
+        <label class="nl-label" for="nl-eye-bulk-count">Number of target frames, or end</label>
         <input id="nl-eye-bulk-count" class="nl-count" value="1" autocomplete="off" spellcheck="false">
         <div class="nl-preview" aria-live="polite"></div>
 
         <div class="nl-actions">
-          <button type="button" class="nl-cancel">Hủy · Esc</button>
-          <button type="button" class="primary nl-apply">Áp dụng · Enter</button>
+          <button type="button" class="nl-cancel">Cancel · Esc</button>
+          <button type="button" class="primary nl-apply">Apply · Enter</button>
         </div>
       </form>
     `;
@@ -2590,14 +2590,14 @@
 
   function selectedEyeBulkTargets() {
     const context = state.eyeBulkContext;
-    if (!context) return { targets: [], error: "Không xác định được clip hiện tại." };
+    if (!context) return { targets: [], error: "Could not identify the current clip." };
     if (state.eyeBulkDirection === "marked") {
-      if (!bboxMarkedScopeMatches()) return { targets: [], error: "Danh sách frame đánh dấu không còn thuộc label hiện tại." };
+      if (!bboxMarkedScopeMatches()) return { targets: [], error: "The marked frames no longer belong to the current label." };
       const targets = Array.from(state.bboxMarkedFrames)
         .filter((g) => Number.isInteger(g) && g !== context.source && S.lseq?.includes(g));
       return targets.length
         ? { targets, error: "" }
-        : { targets: [], error: "Chưa đánh dấu frame đích nào bằng phím V." };
+        : { targets: [], error: "No target frames marked yet. Press V to mark frames." };
     }
     const raw = state.eyeBulkDialog.querySelector(".nl-count").value.trim().toLowerCase();
     const candidates = state.eyeBulkDirection === "before"
@@ -2606,9 +2606,9 @@
     let count;
     if (raw === "end") count = candidates.length;
     else if (/^[1-9]\d*$/.test(raw)) count = Number(raw);
-    else return { targets: [], error: "Nhập số nguyên lớn hơn 0 hoặc end." };
+    else return { targets: [], error: "Enter a positive whole number or end." };
     const selected = candidates.slice(0, count);
-    if (!selected.length) return { targets: [], error: "Không còn frame nào theo hướng đã chọn trong clip này." };
+    if (!selected.length) return { targets: [], error: "No more frames in the selected direction within this clip." };
     return { targets: selected, error: "" };
   }
 
@@ -2623,7 +2623,7 @@
     const quickMode = QUICK_BBOX_LABELS.has(context.label);
     const markedButton = dialog.querySelector(".nl-marked-target");
     markedButton.hidden = !quickMode;
-    markedButton.textContent = `◆ Frame đã đánh dấu (${bboxMarkedScopeMatches() ? state.bboxMarkedFrames.size : 0})`;
+    markedButton.textContent = `◆ Marked frames (${bboxMarkedScopeMatches() ? state.bboxMarkedFrames.size : 0})`;
     if (!quickMode && state.eyeBulkDirection === "marked") state.eyeBulkDirection = "after";
     dialog.querySelector(".nl-count").disabled = state.eyeBulkDirection === "marked";
     dialog.querySelector(".nl-eye-selected-option").hidden = !hasSelected;
@@ -2639,50 +2639,50 @@
     const eyeMode = context.label === "eye_lmk";
     const boxMode = !eyeMode && context.label !== "face_lmk";
     dialog.querySelector("h2").textContent = operation?.type === "delete"
-      ? `Xóa ${context.labelName} theo clip`
-      : operation?.type === "edge" ? `Chỉnh riêng cạnh ${operation.edge} của body` : `Sao chép ${context.labelName} theo clip`;
-    dialog.querySelector(".nl-source-label").textContent = eyeMode ? "Đối tượng nguồn" : "Phần cần sao chép";
+      ? `Delete ${context.labelName} across a clip`
+      : operation?.type === "edge" ? `Adjust the ${operation.edge} body edge` : `Copy ${context.labelName} across a clip`;
+    dialog.querySelector(".nl-source-label").textContent = eyeMode ? "Source objects" : "What to copy";
     dialog.querySelector(".nl-source-label").hidden = operationMode;
     dialog.querySelector(".nl-scope").hidden = operationMode;
     dialog.querySelector(".nl-item-selected-text").textContent = eyeMode
-      ? "Chỉ mắt đang chọn"
-      : context.selectedMode === "clicked" ? "Chỉ box đang chọn" : "Chỉ box mới thêm";
+      ? "Selected eye only"
+      : context.selectedMode === "clicked" ? "Selected box only" : "Newly added box only";
     dialog.querySelector(".nl-item-all-text").textContent = eyeMode
-      ? "Tất cả mắt của frame hiện tại"
-      : boxMode ? "Toàn bộ box hiện tại" : "Toàn bộ face 7pt hiện tại";
+      ? "All eyes in the current frame"
+      : boxMode ? "All boxes in the current frame" : "All face 7pt groups in the current frame";
     dialog.querySelector(".nl-write-label").hidden = !eyeMode || operationMode;
     dialog.querySelector(".nl-write-options").hidden = !eyeMode || operationMode;
     dialog.querySelector(".nl-item-merge-text").textContent = eyeMode
-      ? "Thay mắt cùng vị trí và giữ các mắt còn lại"
+      ? "Replace matching eyes and keep the others"
       : "";
     dialog.querySelector(".nl-item-replace-text").textContent = eyeMode
-      ? "Thay toàn bộ mắt ở frame đích"
+      ? "Replace all eyes in target frames"
       : "";
     dialog.querySelector(".nl-sub").textContent =
-      `${context.clip} · nguồn frame ${context.sourceIndex + 1}/${context.frames.length} · nhãn ${context.labelName}.`;
+      `${context.clip} · source frame ${context.sourceIndex + 1}/${context.frames.length} · label ${context.labelName}.`;
     const picked = selectedEyeBulkTargets();
     const preview = dialog.querySelector(".nl-preview");
     preview.classList.toggle("err", Boolean(picked.error) || !sourceCount);
     if (picked.error) preview.textContent = picked.error;
-    else if (!sourceCount) preview.textContent = `Frame hiện tại không có ${context.labelName} để sao chép.`;
+    else if (!sourceCount) preview.textContent = `This frame has no ${context.labelName} objects to copy.`;
     else {
       const skipped = picked.targets.filter((g) => frameState(g) === "done").length;
       const writeText = eyeMode
-        ? (writeMode === "replace" ? "thay toàn bộ mắt ở frame đích" : "thay mắt cùng vị trí, giữ các mắt còn lại")
+        ? (writeMode === "replace" ? "replace all eyes in target frames" : "replace matching eyes and keep the others")
         : scope === "selected"
-          ? "thay box tương ứng, giữ các box khác; nếu không có box khớp thì thêm mới"
-          : "thay bằng toàn bộ dữ liệu của frame nguồn";
-      const directionText = state.eyeBulkDirection === "marked" ? "đã đánh dấu" :
-        state.eyeBulkDirection === "after" ? "sau" : "trước";
+          ? "replace matching boxes and keep the others; add a new box if no match exists"
+          : "replace with all annotations from the source frame";
+      const directionText = state.eyeBulkDirection === "marked" ? "marked" :
+        state.eyeBulkDirection === "after" ? "next" : "previous";
       const actionText = operation?.type === "delete"
-        ? `Xóa ${operation.selector === "all" ? "toàn bộ box" : operation.selector === "left" ? "box trái" : operation.selector === "right" ? "box phải" : operation.selector === "region" ? "box trong vùng M" : "box cùng thứ tự"}`
+        ? `Delete ${operation.selector === "all" ? "all boxes" : operation.selector === "left" ? "the leftmost box" : operation.selector === "right" ? "the rightmost box" : operation.selector === "region" ? "boxes inside the M region" : "the box at the same position in the list"}`
         : operation?.type === "edge"
-          ? `Đặt cạnh ${operation.edge} tại ${Number(operation.value).toFixed(1)} px`
-          : `Sao chép ${sourceCount} ${eyeMode ? "cụm mắt" : boxMode ? "box" : "cụm face 7pt"}`;
-      preview.textContent = `${actionText} trên ${picked.targets.length} frame ${directionText}` +
-        (operation?.type === "edge" ? " · giữ các cạnh và box khác; thiếu box tương ứng thì thêm box nguồn đã chỉnh" :
-          operationMode ? " · giữ nguyên các box/cạnh còn lại" : ` · ${writeText}`) +
-        (skipped ? ` · bỏ qua ${skipped} frame đã Done` : "") + ". Tối đa 4 request chạy song song.";
+          ? `Set the ${operation.edge} edge to ${Number(operation.value).toFixed(1)} px`
+          : `Copy ${sourceCount} ${eyeMode ? "eye groups" : boxMode ? "boxes" : "face 7pt groups"}`;
+      preview.textContent = `${actionText} across ${picked.targets.length} ${directionText} frames` +
+        (operation?.type === "edge" ? " · keep other edges and boxes; add the edited source box if no match exists" :
+          operationMode ? " · keep other boxes and edges" : ` · ${writeText}`) +
+        (skipped ? ` · skip ${skipped} Done frames` : "") + ". Up to 4 requests run at a time.";
     }
     dialog.querySelector(".nl-apply").disabled = Boolean(picked.error) || !sourceCount || state.operationBusy;
   }
@@ -2691,11 +2691,11 @@
     if (state.operationBusy) return;
     const context = currentEyeClipContext();
     if (!context) {
-      notify("Hãy mở một frame eye 15pt trong clip trước");
+      notify("Open an eye 15pt frame in a clip first");
       return;
     }
     if (!context.sourceItems.length) {
-      notify("Frame hiện tại không có eye 15pt để sao chép");
+      notify("This frame has no eye 15pt annotations to copy");
       return;
     }
     state.eyeBulkContext = context;
@@ -2714,11 +2714,11 @@
         (!bboxMarkedScopeMatches() || !state.bboxMarkedFrames.size)) state.eyeBulkDirection = "after";
     const context = currentGenericClipContext();
     if (!context) {
-      notify("Hãy mở một frame thuộc clip trước khi sao chép");
+      notify("Open a frame in a clip before copying");
       return;
     }
     if (!context.sourceItems.length && !context.operation) {
-      notify(`Frame hiện tại không có ${context.labelName} để sao chép`);
+      notify(`This frame has no ${context.labelName} objects to copy`);
       return;
     }
     state.eyeBulkContext = context;
@@ -2759,30 +2759,30 @@
     dialog.className = "nl-bulk-dialog";
     dialog.innerHTML = `
       <form class="nl-modal" method="dialog">
-        <h2>Chồng segment seatbelt theo clip</h2>
+        <h2>Apply seatbelt masks across a clip</h2>
         <p class="nl-sub"></p>
 
         <p class="nl-status-only" hidden></p>
 
-        <span class="nl-label nl-mask-only">Hướng áp dụng</span>
+        <span class="nl-label nl-mask-only">Target direction</span>
         <div class="nl-choice nl-directions nl-mask-only">
-          <button type="button" data-direction="before">← Các frame trước</button>
-          <button type="button" data-direction="after">Các frame sau →</button>
+          <button type="button" data-direction="before">← Previous frames</button>
+          <button type="button" data-direction="after">Next frames →</button>
         </div>
 
-        <span class="nl-label nl-scope-label nl-mask-only">Phần segment cần chồng</span>
+        <span class="nl-label nl-scope-label nl-mask-only">Mask content to apply</span>
         <div class="nl-scope nl-mask-only">
-          <label class="nl-patch-option"><input type="radio" name="nl-scope" value="patch"><span class="nl-patch-label">Chỉ polygon vừa vẽ</span></label>
-          <label class="nl-mask-option"><input type="radio" name="nl-scope" value="mask"> Toàn bộ segment của frame hiện tại</label>
+          <label class="nl-patch-option"><input type="radio" name="nl-scope" value="patch"><span class="nl-patch-label">Latest polygon only</span></label>
+          <label class="nl-mask-option"><input type="radio" name="nl-scope" value="mask"> Entire mask from the current frame</label>
         </div>
 
-        <label class="nl-label nl-mask-only" for="nl-bulk-count">Số frame đích hoặc end</label>
+        <label class="nl-label nl-mask-only" for="nl-bulk-count">Number of target frames, or end</label>
         <input id="nl-bulk-count" class="nl-count nl-mask-only" value="1" autocomplete="off" spellcheck="false">
         <div class="nl-preview" aria-live="polite"></div>
 
         <div class="nl-actions">
-          <button type="button" class="nl-cancel">Hủy · Esc</button>
-          <button type="button" class="primary nl-apply">Áp dụng · Enter</button>
+          <button type="button" class="nl-cancel">Cancel · Esc</button>
+          <button type="button" class="primary nl-apply">Apply · Enter</button>
         </div>
       </form>
     `;
@@ -2831,7 +2831,7 @@
 
   function selectedBulkTargets() {
     const context = state.bulkContext;
-    if (!context) return { targets: [], error: "Không xác định được clip hiện tại." };
+    if (!context) return { targets: [], error: "Could not identify the current clip." };
     const dialog = state.bulkDialog;
     const raw = dialog.querySelector(".nl-count").value.trim().toLowerCase();
     const candidates = state.bulkDirection === "before"
@@ -2840,9 +2840,9 @@
     let count;
     if (raw === "end") count = candidates.length;
     else if (/^[1-9]\d*$/.test(raw)) count = Number(raw);
-    else return { targets: [], error: "Nhập số nguyên lớn hơn 0 hoặc end." };
+    else return { targets: [], error: "Enter a positive whole number or end." };
     const selected = candidates.slice(0, count);
-    if (!selected.length) return { targets: [], error: "Không còn frame nào theo hướng đã chọn trong clip này." };
+    if (!selected.length) return { targets: [], error: "No more frames in the selected direction within this clip." };
     return { targets: selected, error: "" };
   }
 
@@ -2859,21 +2859,21 @@
     if (statusMode) {
       const selected = Array.from(state.markedFrames);
       const targets = selected.filter((g) => frameState(g) === "done");
-      dialog.querySelector("h2").textContent = "Chuyển frame đã chọn sang In progress";
+      dialog.querySelector("h2").textContent = "Set selected frames to In progress";
       dialog.querySelector(".nl-sub").textContent =
-        `${context.label} · ${selected.length} frame đã chọn. Mask và tag hiện có được giữ nguyên.`;
-      statusOnly.textContent = "Các frame sau khi mở lại có thể chỉnh sửa bình thường.";
+        `${context.label} · ${selected.length} frames selected. Existing masks and tags are preserved.`;
+      statusOnly.textContent = "Reopened frames can be edited as usual.";
       const preview = dialog.querySelector(".nl-preview");
       preview.classList.toggle("err", !targets.length);
       preview.textContent = targets.length
-        ? `Chuyển ${targets.length} frame từ Done sang In progress. Tối đa 4 request chạy song song.`
-        : "Không còn frame Done nào trong danh sách đã chọn.";
+        ? `Set ${targets.length} frames from Done to In progress. Up to 4 requests run at a time.`
+        : "No Done frames remain in the selection.";
       const apply = dialog.querySelector(".nl-apply");
-      apply.textContent = "Chuyển In progress · Enter";
+      apply.textContent = "Set In progress · Enter";
       apply.disabled = !targets.length || state.operationBusy;
       return;
     }
-    dialog.querySelector(".nl-apply").textContent = "Áp dụng · Enter";
+    dialog.querySelector(".nl-apply").textContent = "Apply · Enter";
     for (const button of dialog.querySelectorAll("[data-direction]")) {
       button.classList.toggle("on", button.dataset.direction === state.bulkDirection);
     }
@@ -2886,21 +2886,21 @@
     dialog.querySelector(".nl-mask-option").hidden = subtract;
     dialog.querySelector('.nl-mask-option input').disabled = subtract;
     dialog.querySelector(".nl-patch-label").textContent = samPatch
-      ? (subtract ? "Chỉ phần mask vừa xóa (SAM3)" : "Chỉ phần mask mới thêm (SAM3)")
-      : (subtract ? "Vùng polygon đỏ cần xóa" : "Chỉ polygon vừa vẽ");
+      ? (subtract ? "Latest removed mask area only (SAM3)" : "Latest added mask area only (SAM3)")
+      : (subtract ? "Red polygon region to erase" : "Latest polygon only");
     dialog.classList.toggle("nl-subtract", subtract);
-    dialog.querySelector("h2").textContent = subtract ? "Xóa vùng seatbelt trên nhiều frame" : "Chồng segment seatbelt theo clip";
-    dialog.querySelector(".nl-scope-label").textContent = subtract ? "Vùng cần xóa" : "Phần segment cần chồng";
+    dialog.querySelector("h2").textContent = subtract ? "Erase a seatbelt region across frames" : "Apply seatbelt masks across a clip";
+    dialog.querySelector(".nl-scope-label").textContent = subtract ? "Region to erase" : "Mask content to apply";
     const checked = dialog.querySelector('input[name="nl-scope"]:checked');
     if (subtract || !checked || (checked.value === "patch" && !hasPatch)) {
       dialog.querySelector(`input[name="nl-scope"][value="${hasPatch ? "patch" : "mask"}"]`).checked = true;
     }
 
     dialog.querySelector(".nl-sub").textContent =
-      `${context.clip} · nguồn frame ${context.sourceIndex + 1}/${context.frames.length}. ` +
+      `${context.clip} · source frame ${context.sourceIndex + 1}/${context.frames.length}. ` +
       (subtract
-        ? (samPatch ? "Chỉ xóa phần vừa sửa bằng SAM3; giữ phần seatbelt bên ngoài." : "Chỉ xóa mask bên trong polygon đỏ; giữ phần seatbelt bên ngoài.")
-        : "Segment cũ ở frame đích được giữ nguyên.");
+        ? (samPatch ? "Erase only the latest SAM3 edit; keep the seatbelt mask outside it." : "Erase only inside the red polygon; keep the seatbelt mask outside it.")
+        : "Existing masks in target frames are preserved.");
     const picked = selectedBulkTargets();
     const emptySamPatch = samPatch && !state.lastPatch.pixelCount &&
       dialog.querySelector('input[name="nl-scope"]:checked')?.value === "patch";
@@ -2908,14 +2908,14 @@
     preview.classList.toggle("err", Boolean(picked.error) || emptySamPatch);
     if (picked.error) preview.textContent = picked.error;
     else if (emptySamPatch) preview.textContent = subtract
-      ? "SAM3 chưa xóa thêm pixel nào ở frame hiện tại. Hãy chọn lại vùng cần xóa."
-      : "SAM3 chưa thêm pixel mới ở frame hiện tại. Chọn toàn bộ segment nếu muốn chồng mask hiện có.";
+      ? "SAM3 removed no pixels in this frame. Select an area to erase."
+      : "SAM3 added no new pixels in this frame. Choose the entire mask to copy the existing mask.";
     else {
       const skipped = picked.targets.filter((g) => frameState(g) === "done").length;
-      const action = subtract ? (samPatch ? "Xóa vùng SAM3 trên" : "Xóa vùng đỏ trên") :
-        (samPatch && dialog.querySelector('input[name="nl-scope"]:checked')?.value === "patch" ? "Chồng phần mask mới thêm vào" : "Chồng segment vào");
-      preview.textContent = `${action} ${picked.targets.length} frame đích · ${state.bulkDirection === "after" ? "sau" : "trước"} frame hiện tại` +
-        (skipped ? ` · bỏ qua ${skipped} frame đã Done` : "") + ". Tối đa 4 request chạy song song.";
+      const action = subtract ? (samPatch ? "Erase the SAM3 region on" : "Erase the red region on") :
+        (samPatch && dialog.querySelector('input[name="nl-scope"]:checked')?.value === "patch" ? "Apply the latest added mask area to" : "Apply the mask to");
+      preview.textContent = `${action} ${picked.targets.length} target frames · ${state.bulkDirection === "after" ? "after" : "before"} the current frame` +
+        (skipped ? ` · skip ${skipped} Done frames` : "") + ". Up to 4 requests run at a time.";
     }
     dialog.querySelector(".nl-apply").disabled = Boolean(picked.error) || emptySamPatch || state.operationBusy;
   }
@@ -2946,20 +2946,20 @@
     }
     const context = currentClipContext();
     if (!context) {
-      notify("Hãy mở một frame seatbelt trong clip trước");
+      notify("Open a seatbelt frame in a clip first");
       return;
     }
     if (typeof BT !== "undefined") {
       if (state.manualMode && BT.poly.length) {
-        notify("Hãy khép polygon trước khi Ctrl+B, hoặc nhấn Esc để hủy vùng đang vẽ");
+        notify("Close the polygon before Ctrl+B, or press Esc to cancel drawing");
         return;
       }
       if (BT.busy) {
-        notify("SAM3 đang tạo mask. Hãy chờ kết quả rồi nhấn R để thêm mask trước khi Ctrl+B");
+        notify("SAM3 is generating a mask. Wait for the result, then press R to add it before Ctrl+B");
         return;
       }
       if (BT.prev || BT.points.length) {
-        notify("Nhấn R để thêm vùng xanh SAM3 trước khi Ctrl+B, hoặc Esc để hủy bản xem trước");
+        notify("Press R to add the green SAM3 preview before Ctrl+B, or Esc to cancel the preview");
         return;
       }
     }
@@ -3039,7 +3039,7 @@
   }
 
   async function getFrameMask(g, expectedGeneration) {
-    if (S.gen !== expectedGeneration) throw new Error("Session đã thay đổi");
+    if (S.gen !== expectedGeneration) throw new Error("The session has changed");
     const width = S.sess.src_w;
     const height = S.sess.src_h;
     const key = rvKey(g);
@@ -3055,13 +3055,13 @@
 
     const [segmentIndex, frameIndex] = loc(g);
     const autoLabel = await loadAutoLabel(segmentIndex);
-    if (S.gen !== expectedGeneration) throw new Error("Session đã thay đổi");
+    if (S.gen !== expectedGeneration) throw new Error("The session has changed");
     const frame = autoLabel?.frames?.[String(frameIndex)];
     return polygonsToMask(frame?.sam?.seatbelt || [], width, height);
   }
 
   async function saveFrameMask(g, mask, expectedGeneration) {
-    if (S.gen !== expectedGeneration) throw new Error("Session đã thay đổi");
+    if (S.gen !== expectedGeneration) throw new Error("The session has changed");
     const [segmentIndex, frameIndex] = loc(g);
     const segment = S.sess.segments[segmentIndex];
     const key = rvKey(g);
@@ -3079,20 +3079,20 @@
         items
       })
     });
-    if (S.gen !== expectedGeneration) throw new Error("Session đã thay đổi");
+    if (S.gen !== expectedGeneration) throw new Error("The session has changed");
     (S.ledits[key] = S.ledits[key] || {}).seatbelt = items;
     try { if (typeof _beltCache !== "undefined") _beltCache.delete(key); } catch (_) {}
     if (frameState(g) === "todo") await saveFrameState(g, "seatbelt", "wip", expectedGeneration);
   }
 
   async function getFrameEyeItems(g, expectedGeneration) {
-    if (S.gen !== expectedGeneration) throw new Error("Session đã thay đổi");
+    if (S.gen !== expectedGeneration) throw new Error("The session has changed");
     const key = rvKey(g);
     const saved = S.ledits?.[key]?.eye_lmk;
     if (saved) return cloneEyeItems(saved);
     const [segmentIndex, frameIndex] = loc(g);
     const autoLabel = await loadAutoLabel(segmentIndex);
-    if (S.gen !== expectedGeneration) throw new Error("Session đã thay đổi");
+    if (S.gen !== expectedGeneration) throw new Error("The session has changed");
     const frame = autoLabel?.frames?.[String(frameIndex)];
     return frame && typeof alBoxes === "function" ? cloneEyeItems(alBoxes(frame, "eye_lmk")) : [];
   }
@@ -3108,7 +3108,7 @@
   }
 
   async function saveFrameEyeItems(g, items, expectedGeneration) {
-    if (S.gen !== expectedGeneration) throw new Error("Session đã thay đổi");
+    if (S.gen !== expectedGeneration) throw new Error("The session has changed");
     const [segmentIndex, frameIndex] = loc(g);
     const segment = S.sess.segments[segmentIndex];
     const key = rvKey(g);
@@ -3130,25 +3130,25 @@
         items: savedItems
       })
     });
-    if (S.gen !== expectedGeneration) throw new Error("Session đã thay đổi");
+    if (S.gen !== expectedGeneration) throw new Error("The session has changed");
     (S.ledits[key] = S.ledits[key] || {}).eye_lmk = savedItems;
     if (frameState(g) === "todo") await saveFrameState(g, "eye_lmk", "wip", expectedGeneration);
   }
 
   async function getFrameGenericItems(g, label, expectedGeneration) {
-    if (S.gen !== expectedGeneration) throw new Error("Session đã thay đổi");
+    if (S.gen !== expectedGeneration) throw new Error("The session has changed");
     const key = rvKey(g);
     const saved = S.ledits?.[key]?.[label];
     if (saved) return cloneGenericItems(saved);
     const [segmentIndex, frameIndex] = loc(g);
     const autoLabel = await loadAutoLabel(segmentIndex);
-    if (S.gen !== expectedGeneration) throw new Error("Session đã thay đổi");
+    if (S.gen !== expectedGeneration) throw new Error("The session has changed");
     const frame = autoLabel?.frames?.[String(frameIndex)];
     return frame && typeof alBoxes === "function" ? cloneGenericItems(alBoxes(frame, label)) : [];
   }
 
   async function saveFrameGenericItems(g, label, items, expectedGeneration) {
-    if (S.gen !== expectedGeneration) throw new Error("Session đã thay đổi");
+    if (S.gen !== expectedGeneration) throw new Error("The session has changed");
     const [segmentIndex, frameIndex] = loc(g);
     const segment = S.sess.segments[segmentIndex];
     const key = rvKey(g);
@@ -3172,7 +3172,7 @@
         items: savedItems
       })
     });
-    if (S.gen !== expectedGeneration) throw new Error("Session đã thay đổi");
+    if (S.gen !== expectedGeneration) throw new Error("The session has changed");
     (S.ledits[key] = S.ledits[key] || {})[label] = savedItems;
     if (frameState(g) === "todo") await saveFrameState(g, label, "wip", expectedGeneration);
   }
@@ -3327,7 +3327,7 @@
     }
     const targets = picked.targets.filter((g) => frameState(g) !== "done");
     if (!targets.length) {
-      notify("Các frame đã chọn đều đang ở trạng thái Done");
+      notify("All selected frames are Done");
       return;
     }
     const dialog = state.eyeBulkDialog;
@@ -3356,16 +3356,16 @@
         await saveFrameEyeItems(g, nextItems, context.generation);
       }, (done, total) => {
         preview.classList.remove("err");
-        preview.textContent = `Đang sao chép ${done}/${total} frame…`;
+        preview.textContent = `Copying ${done}/${total} frames…`;
       }, 4);
       if (typeof fsRender === "function" && S.gen === context.generation) fsRender();
       if (typeof paint === "function" && S.gen === context.generation) paint();
-      if (result.error) throw new Error(`đã lưu ${result.completed}/${targets.length}: ${result.error.message}`);
+      if (result.error) throw new Error(`saved ${result.completed}/${targets.length}: ${result.error.message}`);
       dialog.close();
-      notify(`Đã sao chép ${sourceItems.length} cụm eye 15pt vào ${targets.length} frame. Kéo bên trong khung nét đứt để di chuyển cả mắt.`);
+      notify(`Copied ${sourceItems.length} eye 15pt groups to ${targets.length} frames. Drag inside the dashed box to move the entire eye.`);
     } catch (error) {
       preview.classList.add("err");
-      preview.textContent = `Dừng vì lỗi: ${error.message}`;
+      preview.textContent = `Stopped on error: ${error.message}`;
     } finally {
       state.operationBusy = false;
       if (apply.isConnected) apply.disabled = false;
@@ -3434,7 +3434,7 @@
     }
     const targets = picked.targets.filter((g) => frameState(g) !== "done");
     if (!targets.length) {
-      notify("Các frame đã chọn đều đang ở trạng thái Done");
+      notify("All selected frames are Done");
       return;
     }
     const dialog = state.eyeBulkDialog;
@@ -3469,21 +3469,21 @@
         await saveFrameGenericItems(g, context.label, nextItems, context.generation);
       }, (done, total) => {
         preview.classList.remove("err");
-        preview.textContent = `Đang sao chép ${done}/${total} frame…`;
+        preview.textContent = `Copying ${done}/${total} frames…`;
       }, 4);
       if (typeof fsRender === "function" && S.gen === context.generation) fsRender();
       if (typeof paint === "function" && S.gen === context.generation) paint();
       if (QUICK_BBOX_LABELS.has(context.label) && undoFrames.length) rememberBboxUndo(undoFrames, true);
-      if (result.error) throw new Error(`đã lưu ${result.completed}/${targets.length}: ${result.error.message}`);
+      if (result.error) throw new Error(`saved ${result.completed}/${targets.length}: ${result.error.message}`);
       dialog.close();
       notify(operation?.type === "delete"
-        ? `Đã xóa box ${context.labelName} trên ${targets.length} frame`
+        ? `Deleted ${context.labelName} boxes across ${targets.length} frames`
         : operation?.type === "edge"
-          ? `Đã chỉnh riêng cạnh ${operation.edge} của body trên ${targets.length} frame`
-          : `Đã sao chép ${sourceItems.length} đối tượng ${context.labelName} vào ${targets.length} frame`);
+          ? `Adjusted the ${operation.edge} body edge across ${targets.length} frames`
+          : `Copied ${sourceItems.length} ${context.labelName} objects to ${targets.length} frames`);
     } catch (error) {
       preview.classList.add("err");
-      preview.textContent = `Dừng vì lỗi: ${error.message}`;
+      preview.textContent = `Stopped on error: ${error.message}`;
     } finally {
       state.operationBusy = false;
       if (apply.isConnected) apply.disabled = false;
@@ -3519,16 +3519,16 @@
         state.markedFrames.delete(g);
       }, (done, total) => {
         preview.classList.remove("err");
-        preview.textContent = `Đang chuyển ${done}/${total} frame sang In progress…`;
+        preview.textContent = `Setting ${done}/${total} frames to In progress…`;
       }, 4);
       if (typeof fsRender === "function" && S.gen === context.generation) fsRender();
       updateMarkedUI();
-      if (result.error) throw new Error(`đã chuyển ${result.completed}/${targets.length}: ${result.error.message}`);
+      if (result.error) throw new Error(`updated ${result.completed}/${targets.length}: ${result.error.message}`);
       dialog.close();
-      notify(`Đã chuyển ${targets.length} frame sang In progress`);
+      notify(`Set ${targets.length} frames to In progress`);
     } catch (error) {
       preview.classList.add("err");
-      preview.textContent = `Dừng vì lỗi: ${error.message}. Các frame chưa chuyển vẫn được giữ trong danh sách chọn.`;
+      preview.textContent = `Stopped on error: ${error.message}. Frames not yet reopened remain selected.`;
     } finally {
       state.operationBusy = false;
       if (apply.isConnected && dialog.open) {
@@ -3547,7 +3547,7 @@
     }
     const targets = picked.targets.filter((g) => frameState(g) !== "done");
     if (!targets.length) {
-      notify("Các frame đã chọn đều đang ở trạng thái Done");
+      notify("All selected frames are Done");
       return;
     }
 
@@ -3569,7 +3569,7 @@
       }
       let hasPixels = false;
       for (const value of sourceMask) if (value) { hasPixels = true; break; }
-      if (!hasPixels) throw new Error(scope === "patch" ? "Vùng vừa sửa không có pixel để áp dụng" : "Frame nguồn không có segment để chồng");
+      if (!hasPixels) throw new Error(scope === "patch" ? "The latest edit has no pixels to apply" : "The source frame has no mask to apply");
 
       const result = await runQueue(targets, async (g) => {
         const targetMask = await getFrameMask(g, context.generation);
@@ -3580,17 +3580,17 @@
         await saveFrameMask(g, targetMask, context.generation);
       }, (done, total) => {
         preview.classList.remove("err");
-        preview.textContent = `Đang lưu ${done}/${total} frame…`;
+        preview.textContent = `Saving ${done}/${total} frames…`;
       }, 4);
 
       if (typeof fsRender === "function" && S.gen === context.generation) fsRender();
       if (typeof paint === "function" && S.gen === context.generation) paint();
-      if (result.error) throw new Error(`đã lưu ${result.completed}/${targets.length}: ${result.error.message}`);
+      if (result.error) throw new Error(`saved ${result.completed}/${targets.length}: ${result.error.message}`);
       dialog.close();
-      notify(`${operation === "subtract" ? "Đã xóa vùng seatbelt trên" : "Đã chồng segment vào"} ${targets.length} frame trong ${context.clip}`);
+      notify(`${operation === "subtract" ? "Erased the seatbelt region on" : "Applied the mask to"} ${targets.length} frames in ${context.clip}`);
     } catch (error) {
       preview.classList.add("err");
-      preview.textContent = `Dừng vì lỗi: ${error.message}`;
+      preview.textContent = `Stopped on error: ${error.message}`;
     } finally {
       state.operationBusy = false;
       if (apply.isConnected) apply.disabled = false;
@@ -3628,7 +3628,7 @@
       const result = nativeApply.call(this, subtract, ...args);
       if (patch && patch.key === BT.key && patch.generation === S.gen) {
         state.lastPatch = patch;
-        updatePolygonTools(`${subtract ? "Đã xóa" : "Đã thêm"} ${patch.pixelCount.toLocaleString()} px bằng SAM3. Ctrl+B chỉ áp dụng phần vừa sửa.`);
+        updatePolygonTools(`${subtract ? "Removed" : "Added"} ${patch.pixelCount.toLocaleString()} px with SAM3. Ctrl+B applies only the latest edit.`);
       }
       return result;
     };
@@ -3667,7 +3667,7 @@
         if (pageLabelingReady("seatbelt")) {
           const status = document.getElementById("btStat");
           if (BT.prev && status?.textContent.includes("Enter add")) {
-            status.textContent = status.textContent.replace("Enter add", "R thêm");
+            status.textContent = status.textContent.replace("Enter add", "R add");
           }
           const add = document.getElementById("btAdd");
           if (add?.textContent.includes("(Enter)")) {
@@ -3814,9 +3814,9 @@
     tools.innerHTML = `
       <div class="nl-poly-buttons">
         <button type="button" data-poly="add">＋ Polygon (N)</button>
-        <button type="button" data-poly="subtract">− Vùng xóa (M)</button>
+        <button type="button" data-poly="subtract">− Erase region (M)</button>
       </div>
-      <div class="nl-poly-help">Bấm các điểm trên ảnh; bấm lại điểm đầu hoặc chuột phải để khép vùng.</div>
+      <div class="nl-poly-help">Click points on the image; click the first point again or right-click to close the region.</div>
     `;
     const modes = beltTools.querySelector(".btModes");
     if (modes) modes.after(tools);
@@ -3835,9 +3835,9 @@
     }
     const help = tools.querySelector(".nl-poly-help");
     if (message) help.textContent = message;
-    else if (state.manualMode === "add") help.textContent = "Đang vẽ vùng thêm · click các điểm · click điểm đầu/chuột phải để tạo mask và thoát vẽ · Esc để hủy.";
-    else if (state.manualMode === "subtract") help.textContent = "Vùng xóa màu đỏ · click điểm đầu/chuột phải để khép · Ctrl+B để xóa nhiều frame · Esc bỏ vùng chờ áp dụng · Z hoàn tác.";
-    else help.textContent = "SAM3: trái (+), phải (−), R thêm vùng xanh · F: Done/In progress · Space: chạy/dừng video · N: polygon · M: xóa vùng đỏ · Z: hoàn tác.";
+    else if (state.manualMode === "add") help.textContent = "Draw an add region · click points · click the first point or right-click to create the mask and finish · Esc to cancel.";
+    else if (state.manualMode === "subtract") help.textContent = "Red erase region · click the first point or right-click to close · Ctrl+B to erase across frames · Esc to discard the pending region · Z to undo.";
+    else help.textContent = "SAM3: left-click (+), right-click (−), R to add the green preview · F: Done/In progress · Space: play/pause · N: polygon · M: erase region · Z: undo.";
   }
 
   function discardManualPolygon() {
@@ -3861,7 +3861,7 @@
   function setManualMode(mode) {
     if (state.operationBusy) return;
     if (!manualPolygonAvailable()) {
-      notify("Frame Done đang bị khóa. Hãy chuyển về In progress trước khi vẽ polygon");
+      notify("Done frames are locked. Set In progress before drawing a polygon");
       return;
     }
     if (state.manualMode === mode) {
@@ -3884,7 +3884,7 @@
     ensurePolygonDrawing();
     updatePolygonTools();
     if (typeof edRepaint === "function") edRepaint();
-    notify(mode === "add" ? "Polygon thêm: chấm các điểm rồi click điểm đầu hoặc chuột phải" : "Polygon xóa: chấm các điểm rồi click điểm đầu hoặc chuột phải");
+    notify(mode === "add" ? "Add polygon: click points, then click the first point or right-click" : "Erase polygon: click points, then click the first point or right-click");
   }
 
   function pointOnView(event) {
@@ -3939,7 +3939,7 @@
 
   function commitManualPolygon() {
     if (!manualPolygonAvailable() || !state.manualMode || BT.poly.length < 3) {
-      notify("Polygon cần ít nhất 3 điểm");
+      notify("A polygon needs at least 3 points");
       return;
     }
     const points = BT.poly.map((point) => point.slice());
@@ -3972,9 +3972,9 @@
       try { beltChanged(); } finally { state.committingPolygon = false; }
     }
     else if (typeof edRepaint === "function") edRepaint();
-    updatePolygonTools(`${subtract ? "Đã xóa" : "Đã thêm"} polygon (${changed.toLocaleString()} px). Ctrl+B để áp dụng cho frame khác.` +
-      (subtract ? " Esc để thoát vùng xóa." : " Nhấn N để vẽ tiếp."));
-    notify(`${subtract ? "Đã xóa" : "Đã thêm"} polygon · ${changed.toLocaleString()} px`);
+    updatePolygonTools(`${subtract ? "Removed" : "Added"} polygon (${changed.toLocaleString()} px). Ctrl+B to apply to other frames.` +
+      (subtract ? " Esc to exit erase mode." : " Press N to draw another polygon."));
+    notify(`${subtract ? "Removed" : "Added"} polygon · ${changed.toLocaleString()} px`);
   }
 
   function onManualMouseDown(event) {
@@ -4014,7 +4014,7 @@
     }
     BT.poly.push(point);
     if (typeof edRepaint === "function") edRepaint();
-    updatePolygonTools(`Đã chấm ${BT.poly.length} điểm · click điểm đầu hoặc chuột phải để khép.`);
+    updatePolygonTools(`${BT.poly.length} points placed · click the first point or right-click to close.`);
   }
 
   function samAcceptAvailable() {
@@ -4026,16 +4026,16 @@
   function acceptSamPreview() {
     if (state.operationBusy || state.bulkDialog?.open || !manualPolygonAvailable()) return;
     if (BT.busy) {
-      notify("SAM3 đang xử lý. Chờ vùng xanh lá rồi nhấn R để thêm");
+      notify("SAM3 is processing. Wait for the green preview, then press R to add it");
       return;
     }
     if (!BT.prev) {
-      notify("Chưa có vùng xanh lá SAM3 để thêm");
+      notify("No green SAM3 preview to add yet");
       return;
     }
     try { if (typeof pause === "function") pause(); } catch (_) {}
     beltApply(false);
-    notify("Đã thêm mask SAM3 · Ctrl+B để chồng phần mới thêm");
+    notify("Added the SAM3 mask · Ctrl+B to apply only the latest added area");
   }
 
   function onViewContextMenu(event) {
@@ -4188,18 +4188,18 @@
       BT.poly.pop();
       BT.dirty = true;
       if (typeof edRepaint === "function") edRepaint();
-      updatePolygonTools(`Đã hoàn tác điểm cuối · còn ${BT.poly.length} điểm.`);
+      updatePolygonTools(`Undid the last point · ${BT.poly.length} points remaining.`);
       return;
     }
     if (typeof beltUndo !== "function" || !BT.undo.length) {
-      notify("Không còn thao tác để hoàn tác ở frame này");
+      notify("No more operations to undo in this frame");
       return;
     }
     // Do not keep propagating a polygon that the user has just undone.
     if (patchMatchesContext({ sourceKey: BT.key, generation: S.gen })) state.lastPatch = null;
     BT.polyDone = null;
     beltUndo();
-    updatePolygonTools("Đã hoàn tác thao tác sửa mask ở frame hiện tại.");
+    updatePolygonTools("Undid the latest mask edit in this frame.");
   }
 
   function restoreNativeGroups() {
@@ -4259,7 +4259,7 @@
     if (!state.empty) {
       state.empty = document.createElement("div");
       state.empty.className = "nl-empty-filter";
-      state.empty.textContent = "Không tìm thấy part phù hợp.";
+      state.empty.textContent = "No matching parts.";
     }
     const shouldShowEmpty = Boolean(query && rows.length && !visible);
     if (shouldShowEmpty && !state.empty.isConnected) state.list.prepend(state.empty);
@@ -4372,7 +4372,7 @@
     if (title) state.observer.observe(title, { childList: true, subtree: true, characterData: true });
 
     scheduleEnhance();
-    console.info(`[NOTA Labeling Organizer] v${VERSION} đang hoạt động.`);
+    console.info(`[NOTA Labeling Organizer] v${VERSION} is active.`);
     return true;
   }
 

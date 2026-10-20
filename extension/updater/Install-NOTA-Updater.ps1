@@ -81,6 +81,6 @@ $hostManifest = [ordered]@{
 New-Item -Path $registryPath -Force | Out-Null
 Set-Item -Path $registryPath -Value $hostManifestPath
 
-Write-Host "Da cai NOTA Updater cho extension: $extensionRoot"
+Write-Host "NOTA Updater installed for extension: $extensionRoot"
 Write-Host "Extension ID: $($extensionIds -join ', ')"
-Write-Host "Dong va mo lai popup extension de kiem tra."
+Write-Host "Close and reopen the extension popup to check."

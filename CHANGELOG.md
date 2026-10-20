@@ -1,115 +1,122 @@
 # Changelog
 
+## 1.6.18 - 2026-10-20
+
+- Translate the extension interface, dialogs, notifications, updater setup, and native updater messages into English.
+- Add five installation screenshots to the GitHub README, with a concise feature guide and complete keyboard shortcut tables.
+- Rewrite the popup help and usage guide in English, documenting current box matching, bulk editing, and frame marking behavior.
+- Preserve annotation behavior and shortcut bindings from 1.6.17.
+
 ## 1.6.17 - 2026-10-19
 
-- Sửa `Ctrl+B` sau khi kéo cạnh xanh của body: tìm box đích theo hình dạng trước/sau chỉnh và bố cục nguồn, không chọn theo thứ tự trái/phải nên không còn thu nhầm khung lớn khi frame đích thiếu box nhỏ.
-- Nếu chưa có box tương ứng thì thêm box nguồn đã chỉnh; nếu đã có thì chỉ đổi cạnh được chọn sang tọa độ tuyệt đối của đường xanh và giữ ba cạnh còn lại. Giữ các đối tượng khác và gộp box trùng tương ứng.
-- Kiểm thử bốn cạnh, frame thiếu box, thứ tự box khác nhau, box lồng nhau, copy lặp và hoàn tác cả đợt.
+- Fix `Ctrl+B` after dragging a body edge: match targets using the geometry before/after the edit and the source layout, instead of left/right order. A missing small box no longer causes a larger box to shrink.
+- Add the edited source box if no match exists; otherwise set only the selected edge to the blue line's absolute coordinate. Preserve the other three edges and other objects, and merge matching duplicates.
+- Test all four edges, missing boxes, different box orders, nested boxes, repeated copying, and batch undo.
 
 ## 1.6.16 - 2026-10-19
 
-- Sửa trường hợp hai body box nguồn gần trùng nhau vẫn làm giữ lại box cũ ở frame đích. Nhóm box gần trùng dùng ngưỡng IoU 75% riêng cho copy; cảnh báo đỏ vẫn giữ ngưỡng 90%.
-- Kiểm thử một box nguồn thay một hoặc nhiều box cũ cao/thấp khác nhau: kết quả còn đúng một box vừa copy tại vị trí đó, đồng thời giữ các đối tượng khác.
-- Kiểm thử lại box lồng nhau, copy lặp, `Ctrl+C` / `Ctrl+V` và hoàn tác hàng loạt bằng `Z`.
+- Fix nearly duplicate source body boxes incorrectly protecting old target boxes. Copying groups source duplicates at 75% IoU; red warnings still use 90%.
+- Test one source box replacing one or more old boxes of different heights, leaving one copied box at that position and preserving other objects.
+- Recheck nested boxes, repeated copying, `Ctrl+C` / `Ctrl+V`, and bulk undo with `Z`.
 
 ## 1.6.15 - 2026-10-19
 
-- Sửa sao chép riêng bbox khi có box lồng nhau: đối chiếu cả bố cục nguồn để giữ box bao ngoài và các đối tượng khác, đồng thời thay box hẹp tương ứng bằng đúng một box được copy.
-- Áp dụng cùng cách ghép cho `Ctrl+B` và `Ctrl+C` / `Ctrl+V`; copy lặp không thêm box trùng, `Z` vẫn hoàn tác được cả đợt.
-- Thêm kiểm thử cho box lồng nhau, box khác kích thước, box trùng và dán lặp.
+- Fix selected bbox copying with nested boxes: compare the full source layout to preserve enclosing boxes and other objects while replacing a matching narrow box with one copied box.
+- Use the same matching for `Ctrl+B` and `Ctrl+C` / `Ctrl+V`. Repeated copies do not add duplicates; `Z` still undoes the whole batch.
+- Add tests for nested boxes, size differences, duplicates, and repeated pasting.
 
 ## 1.6.14 - 2026-10-19
 
-- Sửa bộ cài updater trên Windows để dò Extension ID trong cả `Preferences` và `Secure Preferences` của Chrome, Chrome Beta, Chrome Canary và Chromium.
-- Nếu Chrome không cho tự dò ID, bộ cài hướng dẫn người dùng copy ID từ `chrome://extensions` rồi dán trực tiếp để tiếp tục cài đặt.
+- Detect the Windows Extension ID in both `Preferences` and `Secure Preferences` for Chrome, Chrome Beta, Chrome Canary, and Chromium.
+- If automatic detection is unavailable, prompt the user to copy the ID from `chrome://extensions` and paste it to continue setup.
 
 ## 1.6.13 - 2026-10-19
 
-- Thêm `Install-NOTA-Updater.command` và native updater universal cho macOS Apple Silicon/Intel; người dùng MacBook có thể cài updater một lần rồi dùng nút **Update ngay** như Windows.
-- Trang hướng dẫn cài updater hiển thị riêng các bước Windows và macOS.
+- Add `Install-NOTA-Updater.command` and a universal macOS native updater for Apple Silicon and Intel. After one-time setup, Mac users can use **Update now** as on Windows.
+- Show separate Windows and macOS instructions on the updater setup page.
 
 ## 1.6.12 - 2026-10-19
 
-- Không còn xóa nhầm body box lớn khi copy một box nhỏ nằm bên trong: điều kiện replace giờ kiểm tra thêm độ tương đồng chiều rộng và chiều cao, đồng thời vẫn gộp các bản sao thực sự trùng nhau.
+- Prevent copying a small nested body box from replacing the enclosing box: matching now also checks width and height similarity while still merging true duplicates.
 
 ## 1.6.11 - 2026-10-19
 
-- Nhận diện bbox cùng đối tượng bằng cả IoU và độ phủ của box nhỏ hơn. Khi copy, mọi box cũ trùng cùng vị trí được gộp và thay bằng đúng một box nguồn, kể cả khi box cũ cao hơn nhiều.
+- Identify matching boxes using both IoU and coverage of the smaller box. Replace all matching duplicates at a position with one source box, even when the old box is much taller.
 
 ## 1.6.10 - 2026-10-19
 
-- Khi sao chép riêng bbox, nhận diện box cùng vị trí với ngưỡng IoU 50% để thay box cũ kể cả khi chiều cao khác nhau; ngưỡng cảnh báo bbox trùng màu đỏ vẫn giữ ở 90%.
+- Use a 50% IoU threshold for selected bbox replacement to handle differing heights; keep the red duplicate warning threshold at 90%.
 
 ## 1.6.9 - 2026-10-19
 
-- Khi sao chép riêng một bbox bằng `Ctrl+B` hoặc `Ctrl+C` / `Ctrl+V`, box đích trùng từ 90% IoU được thay bằng box nguồn; nếu không có box trùng thì thêm box mới và giữ nguyên các box khác.
+- With selected bbox `Ctrl+B` or `Ctrl+C` / `Ctrl+V`, replace target boxes at 90% IoU or above. If none match, add the new box and preserve others.
 
 ## 1.6.8 - 2026-10-19
 
-- Sửa `Ctrl+B` sau khi vẽ vùng xóa `M` cho hand và eye box: luôn mở chế độ xóa hàng loạt, kể cả khi khép vùng bằng cách click lại điểm đầu hoặc vùng nguồn không chứa box.
+- Fix `Ctrl+B` after drawing an `M` delete region for hand and eye boxes: always open bulk deletion, including when the polygon closes on its first point or the source region contains no boxes.
 
 ## 1.6.7 - 2026-10-19
 
-- Chỉ cảnh báo bbox trùng màu đỏ khi IoU của cặp box đạt từ 90%; box nhỏ giao một phần hoặc nằm trong box lớn không còn bị báo nhầm.
+- Show red duplicate warnings only at 90% IoU or above. Small boxes partly overlapping or contained within larger boxes no longer trigger false warnings.
 
 ## 1.6.6 - 2026-10-19
 
-- Sửa hướng hiển thị tổng số ảnh trong cột part để đọc từ trên xuống dưới, không còn bị xoay ngược.
+- Correct the part frame-count orientation to read from top to bottom.
 
 ## 1.6.5 - 2026-10-19
 
-- `Ctrl+B` với **Chỉ box đang chọn** chuyển sang thêm box vào frame đích; không thay thế hoặc làm mất box cũ.
-- Cảnh báo trực quan các bbox chồng lấn bằng lớp phủ và viền đỏ; góc ảnh hiển thị tổng số bbox.
-- Hiển thị tổng số ảnh của từng part ngay trong cột tên part ở danh sách bên trái.
+- Change **Selected box only** in `Ctrl+B` to append the box without replacing existing target boxes.
+- Highlight overlapping boxes with a red fill and border; show the total bbox count in the image corner.
+- Show each part's total frame count in the left sidebar.
 
 ## 1.6.4 - 2026-10-19
 
-- Sửa trường hợp updater báo đã dùng bản mới nhất nhưng khi mở lại popup vẫn hiện phiên bản runtime cũ.
-- Khi file extension trên máy mới hơn runtime Chrome đang giữ, popup luôn gọi reload kể cả native updater trả về `up_to_date`.
+- Fix the updater reporting the latest version while the popup still shows the old running version.
+- Reload whenever files on disk are newer than Chrome's running extension, even if the native updater returns `up_to_date`.
 
 ## 1.6.3 - 2026-10-19
 
-- Chuẩn hóa body/hand/eye box: `X` xóa toàn bộ bbox, `1`/`2` xóa box trái/phải; `Shift+X` xóa toàn bộ rồi sang frame sau.
-- `C` và `Shift+C` luôn lấy toàn bộ bbox của frame vừa xem; `Ctrl+C/V`, `V`, `Ctrl+B` và `Z` giữ nguyên chức năng.
-- Bỏ bảng phím tắt nổi ở cuối màn hình.
+- Standardize body/hand/eye box shortcuts: `X` deletes all boxes, `1` / `2` delete left/right, and `Shift+X` deletes all and advances.
+- Make `C` and `Shift+C` always copy all boxes from the previously viewed frame. Preserve `Ctrl+C/V`, `V`, `Ctrl+B`, and `Z`.
+- Remove the floating shortcut bar at the bottom of the screen.
 
 ## 1.6.2 - 2026-10-19
 
-- Đổi chỉnh cạnh body hàng loạt sang tọa độ tuyệt đối: cạnh ở mọi frame đích được đặt đúng tại vị trí đường xanh của frame nguồn, không cộng/trừ delta pixel.
-- Đổi thanh chức năng body/hand/eye thành các nút thật có thể click; phím tắt bàn phím vẫn hoạt động song song.
+- Apply body edge edits using absolute coordinates: target edges move to the source blue line's position instead of receiving a pixel offset.
+- Make the body/hand/eye toolbar buttons clickable while retaining keyboard shortcuts.
 
 ## 1.6.1 - 2026-10-19
 
-- Body, hand và eye box có thể click chọn một box rồi dùng `Ctrl+B` để chỉ sao chép box đó sang các frame đích; box cùng thứ tự trái/phải được thay và các box còn lại được giữ nguyên.
-- `Ctrl+C` / `Ctrl+V` cũng ưu tiên box đang chọn trên các label multi-box.
-- Sửa `Ctrl+B` cho vùng xóa bbox tạo bằng `M`; polygon xóa được áp dụng đúng lên các frame trước/sau hoặc frame đã đánh dấu.
+- Allow selecting one body, hand, or eye box and copying it with `Ctrl+B`. Replace the box at the same left/right rank and preserve other boxes.
+- Prefer the selected box for `Ctrl+C` / `Ctrl+V` on labels with multiple boxes.
+- Fix bulk bbox deletion from an `M` polygon for previous, next, or marked frames.
 
 ## 1.6.0 - 2026-10-19
 
-- Thêm thanh phím tắt luôn hiển thị cho body, hand và eye box.
-- Thêm `X`, `Shift+X`, `1`, `2`, `C`, `Shift+C`, `Ctrl+C`, `Ctrl+V`, `V` và `Z` cho quy trình sửa bbox nhanh.
-- `Ctrl+B` hỗ trợ sao chép hoặc xóa theo số frame, đến cuối clip, hoặc các frame đã đánh dấu.
-- Body có chế độ double-click và kéo riêng một cạnh; cạnh cũ màu trắng, cạnh mới màu xanh và chỉ cạnh đó được truyền sang frame đích.
-- `Z` khôi phục toàn bộ một đợt bbox hàng loạt trong một lần.
+- Add an always-visible shortcut bar for body, hand, and eye boxes.
+- Add `X`, `Shift+X`, `1`, `2`, `C`, `Shift+C`, `Ctrl+C`, `Ctrl+V`, `V`, and `Z` for quick bbox editing.
+- Support bulk copying/deletion by frame count, to the clip boundary, or across marked frames.
+- Add double-click and drag for one body edge: show the old edge in white and the new edge in blue, and propagate only that edge.
+- Undo an entire bbox batch with one `Z`.
 
 ## 1.5.9 - 2026-10-19
 
-- Sửa encoding của script cài NOTA Updater trên Windows PowerShell 5.1.
+- Fix NOTA Updater installer encoding on Windows PowerShell 5.1.
 
 ## 1.5.8 - 2026-10-19
 
-- Thêm NOTA Updater cho Windows qua Chrome Native Messaging.
-- Sau bước cài updater một lần, nút **Update ngay** tự tải GitHub Release, kiểm tra SHA256, thay file và reload extension.
-- Tự tìm ID gắn với thư mục Load unpacked hiện tại để giữ nguyên extension và giới hạn native host đúng ID đó.
+- Add NOTA Updater for Windows through Chrome Native Messaging.
+- After one-time setup, **Update now** downloads a GitHub release, verifies SHA256, replaces files, and reloads the extension.
+- Detect the ID associated with the current unpacked folder and restrict the native host to that ID.
 
 ## 1.5.7 - 2026-10-19
 
-- Đổi thao tác tạo bbox: nhấn `N`, click góc đầu, di chuyển chuột không cần giữ nút rồi click góc đối diện để hoàn tất.
-- `Esc` hủy box đang tạo trước lần click thứ hai.
+- Create a bbox with `N`, a click on the first corner, pointer movement without holding a button, and a click on the opposite corner.
+- Cancel before the second click with `Esc`.
 
 ## 1.5.6 - 2026-10-19
 
-- Thêm nút **Kiểm tra update** trong popup.
-- Kiểm tra bản Chrome Web Store trước, sau đó kiểm tra GitHub Release.
-- Thêm quy trình tự đóng gói và tạo Release bằng GitHub Actions.
-- Giữ toàn bộ tính năng của 1.5.5: điều hướng theo danh sách đang lọc, ba trạng thái clip, Ctrl+B cho mọi loại nhãn, eye 15pt theo cụm, N/M cho bbox và giới hạn bbox tại biên ảnh kiểu CVAT.
+- Add **Check for updates** to the popup.
+- Check the Chrome Web Store first, then GitHub releases.
+- Automate packaging and releases with GitHub Actions.
+- Preserve 1.5.5 features: filtered-list navigation, three clip statuses, bulk actions for all label types, eye 15pt group transforms, bbox `N` / `M`, and CVAT-style image-boundary clipping.
