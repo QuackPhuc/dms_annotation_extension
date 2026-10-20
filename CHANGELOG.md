@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.22 - 2026-10-20
+
+- Add `R` as an alias for the native Delete action on all bounding-box labels, including multiple selected boxes.
+- Require a selection through the native handler; ignore held-key repeats, typing, modifier chords, dialogs, locked frames, active drags, and stale editor frames.
+- Preserve Delete/Backspace and the seatbelt `R` shortcut for accepting SAM3 previews.
+
 ## 1.6.21 - 2026-10-20
 
 - Fix the sidebar jumping to a later clip or another part when collapsing a long clip from its sticky header, including after marking it Done.

@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.6.21";
+  const VERSION = "1.6.22";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";
@@ -4095,6 +4095,20 @@
         if (!anyBulkDialogOpen()) {
           state.samAcceptHeld = true;
           if (!event.repeat) acceptSamPreview();
+        }
+        return;
+      }
+      if (!event.shiftKey && bboxLabelingReady()) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (!event.repeat && !event.isComposing && !state.operationBusy && bboxEditingAvailable() &&
+            !(typeof RV_OPEN !== "undefined" && RV_OPEN) && !ED.drag && !ED.marq &&
+            ED.lab === S.labelSel && typeof rvKey === "function" && ED.key === rvKey(S.shownG)) {
+          // Use the native Delete handler so selection, saving and status updates
+          // behave exactly like Delete, including multiple selected boxes.
+          target.dispatchEvent(new KeyboardEvent("keydown", {
+            key: "Delete", code: "Delete", bubbles: true, cancelable: true
+          }));
         }
         return;
       }

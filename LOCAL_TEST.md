@@ -1,16 +1,18 @@
-# Manual testing: 1.6.21
+# Manual testing: 1.6.22
 
-Use this checklist to verify sticky clip controls and image preloading in your DMS environment.
+Use this checklist to verify bbox shortcuts, sticky clip controls, and image preloading in your DMS environment.
 
 ## Install
 
-1. Extract `dist/NOTA_Labeling_Organizer_Extension_v1.6.21.zip`, or use this repository's `extension` folder.
+1. Extract `dist/NOTA_Labeling_Organizer_Extension_v1.6.22.zip`, or use this repository's `extension` folder.
 2. In `chrome://extensions`, disable the older Organizer version. Click **Load unpacked** and select the folder containing `manifest.json`.
 3. Reload the DMS tab. Open **Labeling**, choose a label, and open a frame.
 4. Find **auto_load_img** and **Stop** directly below the part search field.
 
 ## Review checklist
 
+- On an editable bbox frame, select one or more boxes intended for removal and press `R`. Only the selected boxes should be deleted, just like Delete. Check that Delete/Backspace still work, and that R without a selection changes nothing.
+- Hold `R`, type `r` in the part search box, and try `R` on a Done frame. There should be no repeated or unintended deletion. On seatbelt, `R` should still accept the ready SAM3 preview.
 - Expand a long clip and scroll down through its frames. Its header (toggle, clip number, and status buttons) should stay directly below the search/image-loading toolbar.
 - Collapse the clip using the pinned toggle, then reopen it. Scroll into another expanded clip and confirm that its own header takes over.
 - Mark a long clip Done and collapse it while scrolled near its end. Its header must remain visible instead of jumping to a later part. Repeat by collapsing while Done is still saving, and with the following clips already collapsed.
@@ -36,6 +38,7 @@ Run with Python and Playwright/Chromium installed:
 python tests/test_preload.py
 python tests/test_bbox_copy.py
 python tests/test_sidebar_scroll.py
+python tests/test_bbox_shortcuts.py
 ```
 
 The image-loading tests use delayed local responses, actual IndexedDB and Chromium image decoding. They cover request limits, cache hits, Stop/resume, part transitions, failed optimistic Done saves, scope changes, failed image retries, quota errors, and integration with the Organizer. When the saved local DMS source is available, the integration check uses its original `getFrame` and `show` implementations.

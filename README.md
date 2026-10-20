@@ -2,7 +2,7 @@
 
 A Chrome extension for faster annotation in **DMS Labeling**. Group frames by clip, edit labels with keyboard shortcuts, and repeat changes across multiple frames.
 
-**Version 1.6.21 · English**
+**Version 1.6.22 · English**
 
 [Download the latest release](https://github.com/tanmainhat0502/dms_annotation_extension/releases/latest) · [Detailed usage guide](extension/README.md) · [Changelog](CHANGELOG.md)
 
@@ -105,6 +105,7 @@ Use these on the labeling canvas, outside text fields. On macOS, `Cmd+B`, `Cmd+C
 | --- | --- |
 | `N` | Click one corner, then the opposite corner to create a box. No mouse hold needed. |
 | `M` | Draw a red delete region; right-click or click its first point to close it. `Esc` exits. |
+| `R` / `Delete` / `Backspace` | Delete the selected bounding box(es). `R` does nothing without a selection; hold-to-repeat is disabled for `R`. |
 | `X` / `Shift+X` | Body/hand/eye: delete all boxes / delete all and move to the next frame. |
 | `1` / `2` | Body/hand/eye: delete the leftmost / rightmost box. |
 | `C` / `Shift+C` | Body/hand/eye: copy all boxes from the previously viewed frame / copy and move to the next frame. |
