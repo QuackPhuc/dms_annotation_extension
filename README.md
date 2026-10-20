@@ -2,7 +2,7 @@
 
 A Chrome extension for faster annotation in **DMS Labeling**. Group frames by clip, edit labels with keyboard shortcuts, and repeat changes across multiple frames.
 
-**Version: 1.6.18 · English**
+**Version 1.6.19 · English**
 
 [Download the latest release](https://github.com/tanmainhat0502/dms_annotation_extension/releases/latest) · [Detailed usage guide](extension/README.md) · [Changelog](CHANGELOG.md)
 
@@ -51,6 +51,7 @@ Reload your DMS tab and open **Labeling**. Search for a part, expand a clip such
 | Feature | How it works |
 | --- | --- |
 | Organize frames | Search part names, group frames by clip, and see frame counts and the last edited checkpoint. Navigation follows the filtered list. |
+| Load images ahead | Click **auto_load_img** to download the current part and the next unfinished part in the background. See their combined image count; **Stop** pauses and keeps downloaded images. |
 | Set clip status | Click **Done**, **Not checked**, or **In progress** on a clip to apply that status to every frame in it. |
 | Edit bounding boxes | Press `N` and click two opposite corners to create a box. Use `M` to draw a region that deletes boxes inside it. Boxes dragged outside the image are clipped on release. |
 | Copy annotations | Press `Ctrl+B` to copy boxes, eye 15pt, face 7pt, or seatbelt edits to previous/next frames. Enter a frame count or `end` to reach the clip boundary. |
@@ -63,6 +64,22 @@ Reload your DMS tab and open **Labeling**. Search for a part, expand a clip such
 **Bulk editing:** the frame count excludes the current frame. Previous/next operations stay inside the current clip and skip **Done** frames. Saved **Not checked** frames become **In progress**. For body/hand/eye boxes, marked targets may span clips within the same session and label.
 
 **Box matching uses geometry**, not visual object recognition. Boxes that overlap by at least 90% IoU are highlighted red. The image also shows a bbox count.
+
+## Automatic image loading
+
+1. Open a frame in the part you are working on and click **auto_load_img** under the part search box.
+2. The extension downloads that part, then the next unfinished part, with up to **3 parallel background requests**. The counter shows images stored / total images in those **2 parts**.
+3. Continue editing or leave the tab open. Loading continues even while playback is paused. Once both parts are loaded, **Ready** means the loader is still watching for part completion.
+4. When **every frame** of the first part is successfully saved as Done, its image cache is released and the next unfinished part loads automatically: **1+2 → 2+3 → 3+4**. Completing only the last clip does not advance if earlier frames remain unfinished.
+5. **Stop** cancels background downloads but keeps completed images. Click **auto_load_img** again to fill the missing images for the part currently open and its next unfinished part. Failed downloads are retried on restart.
+
+Compressed images are stored in the browser's local IndexedDB storage, not kept as thousands of decoded bitmaps in RAM. Normal navigation reuses these images and decodes only what the viewer needs. `A` / `D` also prepare up to three nearby frames.
+
+The loader allows up to three background requests per tab, with no fixed images-per-second limit. Actual speed depends on the server and connection. It pauses starting background requests while the viewer is fetching frames or saving frame status; requests already in progress may continue. Multiple users or tabs add to the server's load.
+
+The counter covers the active label's complete parts, including Done frames hidden by filters. It changes when the two-part window advances; the final part runs alone. Jumping outside the current pair while loading starts a new pair at that part. Stop first if you only want to inspect another part temporarily.
+
+Switching sessions, labels, image size/quality, or leaving Labeling stops loading and clears this cache. Reloading the tab also starts fresh. Browser storage limits or network failures may stop/limit loading and are shown in the toolbar. Loading ahead reduces network waits; it cannot remove image decoding time or waits for other DMS data.
 
 ## Keyboard shortcuts
 
@@ -135,7 +152,7 @@ Search, grouping, and label visibility change only the interface. Annotation edi
 | `dist/` | Versioned release ZIPs. |
 | `native-updater/` | Windows and macOS updater source. |
 | `scripts/package.ps1` | Package the version from `extension/manifest.json`. |
-| `tests/` | Bbox matching and body edge regression checks. |
+| `tests/` | Image preloading, bbox matching, and body edge regression checks. |
 | `.github/workflows/` | Build the macOS updater; publish releases on `vX.Y.Z` tags. |
 
 To release: update the version in `extension/manifest.json` and `extension/content.js`, update the docs/changelog, run `native-updater/build.ps1` if the Windows updater changed, then run `scripts/package.ps1`. Commit and push, then push a matching `vX.Y.Z` tag. GitHub Actions publishes the ZIP with Windows and universal macOS updaters.

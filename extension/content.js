@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.6.18";
+  const VERSION = "1.6.19";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";
@@ -563,6 +563,16 @@
     if (!Number.isInteger(next)) return false;
     try { if (typeof pause === "function") pause(); } catch (_) {}
     show(next);
+    // Warm a few following frames, using the same cache as the native player.
+    // The two-part preloader supplies compressed local images when available.
+    if (typeof getFrame === "function" && typeof fkey === "function" && S.inflight && S.frames) {
+      for (let offset = 1; offset <= 3 && S.inflight.size < 4; offset++) {
+        const row = rows[nextIndex + Math.sign(direction) * offset];
+        if (!row) break;
+        const g = Number(row.dataset.g);
+        if (!S.frames.has(fkey(g))) getFrame(g).catch(() => {});
+      }
+    }
     return true;
   }
 

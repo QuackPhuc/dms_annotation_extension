@@ -1,6 +1,6 @@
 # NOTA Labeling Organizer — usage guide
 
-**Version 1.6.18 · English**
+**Version 1.6.19 · English**
 
 For installation screenshots and the complete shortcut tables, see the [GitHub README](https://github.com/tanmainhat0502/dms_annotation_extension#readme).
 
@@ -14,6 +14,20 @@ For installation screenshots and the complete shortcut tables, see the [GitHub R
 `A` / `D` navigate the visible list; `Shift+A` / `Shift+D` move 10 frames. `Space` plays that same list and stops at its end. Clearing the search with `Esc` or `×` restores all parts.
 
 Each clip has **Done**, **Not checked**, and **In progress** buttons that set the entire clip's status. A checkpoint marks the last edited frame. The list preserves its scroll position during edits and brings newly opened frames into view.
+
+## Load images while you work
+
+Click **auto_load_img** below the part search box. It downloads the current part and the next unfinished part, using up to three background requests. The progress counter is the number of images stored / all images in those two parts. Editing and navigation remain available; loading continues while you pause playback or stop interacting.
+
+When all frames in the first part are saved as Done, the extension releases that part's cache and loads the next unfinished part: **1+2 → 2+3 → 3+4**. A failed Done save does not advance the pair. The last part loads alone.
+
+**Stop** cancels background requests and keeps completed images. Click **auto_load_img** again to fill the current part and the next unfinished part, keeping any already loaded images in that pair. This also retries failed images. Opening a part outside the pair while the loader is running starts a new pair there.
+
+Images are stored compressed in local browser storage; background loading does not decode thousands of bitmaps into RAM. Normal viewing uses those stored images, and `A` / `D` prepare up to three nearby frames. Some decoding or annotation loading delay may remain.
+
+The three-request background limit applies per tab; there is no fixed images-per-second limit. Speed and server load depend on the connection, server capacity, and number of users or tabs loading images.
+
+The pair uses the complete parts for the current label, even when the sidebar is filtered or Done frames are hidden. Changing session, label, image size/quality, leaving Labeling, or reloading the tab clears the preloader's cache. No annotation data is changed by preloading.
 
 ## Bulk actions: Ctrl+B
 

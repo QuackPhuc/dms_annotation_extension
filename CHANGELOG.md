@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.6.19 - 2026-10-20
+
+- Add **auto_load_img**, **Stop**, and a combined image counter for the current part and the next unfinished part.
+- Download up to three images concurrently in the background and keep compressed images in IndexedDB instead of decoding the entire pair into RAM.
+- Release the first part's cache after all its frames are successfully saved as Done, then load the next unfinished part. Preserve the overlapping part.
+- Keep completed downloads on Stop; resume missing images for the currently open part and the next part. Share foreground/background requests for the same image.
+- Clear preloader state on session, label, resolution/quality or mode changes. Display failed downloads and storage errors without blocking normal viewing.
+- Prepare up to three nearby frames when navigating with `A` / `D`.
+
 ## 1.6.18 - 2026-10-20
 
 - Translate the extension interface, dialogs, notifications, updater setup, and native updater messages into English.
