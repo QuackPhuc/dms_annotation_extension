@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.21 - 2026-10-20
+
+- Fix the sidebar jumping to a later clip or another part when collapsing a long clip from its sticky header, including after marking it Done.
+- Anchor the clicked header when toggling so it stays within reach after the list changes height.
+- Add browser regressions for Done followed by collapse, pending/failed saves, repainting, list rebuilding, keyboard toggles, and short remaining lists.
+
 ## 1.6.20 - 2026-10-20
 
 - Keep each clip's expand/collapse toggle and status buttons visible below the search/image-loading toolbar while scrolling through its frames.

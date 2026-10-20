@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.6.20";
+  const VERSION = "1.6.21";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";
@@ -1478,16 +1478,24 @@
       statusActions.addEventListener("keydown", (event) => event.stopPropagation());
       summary.append(noEl, meta, statusActions);
 
-      // Record the user's intention before the native <details> click toggles.
-      // This prevents a pending render pass from reopening a clip immediately.
-      summary.addEventListener("click", () => {
-        if (details.open) {
+      summary.addEventListener("click", (event) => {
+        if (event.defaultPrevented) return;
+        event.preventDefault();
+        // A sticky header may be far below its normal position in the list.
+        // Collapse synchronously and anchor that header, not the old scrollTop:
+        // keeping the old scrollTop would expose a later clip or another part.
+        const top = Math.max(summary.getBoundingClientRect().top,
+          state.toolbar.getBoundingClientRect().bottom);
+        const opening = !details.open;
+        if (!opening) {
           state.openClips.delete(details.dataset.key);
           state.manuallyClosedClips.add(details.dataset.key);
         } else {
           state.openClips.add(details.dataset.key);
           state.manuallyClosedClips.delete(details.dataset.key);
         }
+        details.open = opening;
+        state.pane.scrollTop += summary.getBoundingClientRect().top - top;
       });
 
       const ul = document.createElement("ul");

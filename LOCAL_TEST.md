@@ -1,10 +1,10 @@
-# Manual testing: 1.6.20
+# Manual testing: 1.6.21
 
 Use this checklist to verify sticky clip controls and image preloading in your DMS environment.
 
 ## Install
 
-1. Extract `dist/NOTA_Labeling_Organizer_Extension_v1.6.20.zip`, or use this repository's `extension` folder.
+1. Extract `dist/NOTA_Labeling_Organizer_Extension_v1.6.21.zip`, or use this repository's `extension` folder.
 2. In `chrome://extensions`, disable the older Organizer version. Click **Load unpacked** and select the folder containing `manifest.json`.
 3. Reload the DMS tab. Open **Labeling**, choose a label, and open a frame.
 4. Find **auto_load_img** and **Stop** directly below the part search field.
@@ -13,6 +13,7 @@ Use this checklist to verify sticky clip controls and image preloading in your D
 
 - Expand a long clip and scroll down through its frames. Its header (toggle, clip number, and status buttons) should stay directly below the search/image-loading toolbar.
 - Collapse the clip using the pinned toggle, then reopen it. Scroll into another expanded clip and confirm that its own header takes over.
+- Mark a long clip Done and collapse it while scrolled near its end. Its header must remain visible instead of jumping to a later part. Repeat by collapsing while Done is still saving, and with the following clips already collapsed.
 - Resize the sidebar/window and check that the pinned controls do not overlap the toolbar. Use `A` / `D` to reveal frames and confirm they are not hidden behind the pinned controls.
 - Click **auto_load_img** in part 1. Confirm the names show parts 1 and 2, and the denominator is their combined frame count.
 - Edit labels and use `A`, `D`, or `Space` while loading. The loader must not change the displayed frame or annotation data.
@@ -34,6 +35,9 @@ Run with Python and Playwright/Chromium installed:
 ```powershell
 python tests/test_preload.py
 python tests/test_bbox_copy.py
+python tests/test_sidebar_scroll.py
 ```
 
 The image-loading tests use delayed local responses, actual IndexedDB and Chromium image decoding. They cover request limits, cache hits, Stop/resume, part transitions, failed optimistic Done saves, scope changes, failed image retries, quota errors, and integration with the Organizer. When the saved local DMS source is available, the integration check uses its original `getFrame` and `show` implementations.
+
+The sidebar tests use long clips and local status-save responses. They check header position after collapse, successful/failed pending saves, native-style repaints and list rebuilds, keyboard toggles, frame navigation, and closing near the end of the list.

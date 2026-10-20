@@ -1,6 +1,6 @@
 # NOTA Labeling Organizer — usage guide
 
-**Version 1.6.20 · English**
+**Version 1.6.21 · English**
 
 For installation screenshots and the complete shortcut tables, see the [GitHub README](https://github.com/tanmainhat0502/dms_annotation_extension#readme).
 
@@ -16,6 +16,8 @@ For installation screenshots and the complete shortcut tables, see the [GitHub R
 Each clip has **Done**, **Not checked**, and **In progress** buttons that set the entire clip's status. A checkpoint marks the last edited frame. The list preserves its scroll position during edits and brings newly opened frames into view.
 
 While you scroll through an expanded clip, its header stays below the search/image-loading toolbar. You can collapse the clip or use its status buttons without scrolling back to the beginning. The next clip's header takes its place as you scroll into that clip.
+
+Collapsing a clip keeps its header in view instead of jumping to another part, including after marking the clip Done or while its status is still saving.
 
 ## Load images while you work
 
