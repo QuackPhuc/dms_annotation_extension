@@ -1,16 +1,20 @@
-# Manual testing: 1.6.28
+# Manual testing: 1.6.29
 
 Use this checklist to verify cached playback, the timeline lock, bbox editing, sticky clip controls, and image preloading in your DMS environment.
 
 ## Install
 
-1. Extract `dist/NOTA_Labeling_Organizer_Extension_v1.6.28.zip`, or use this repository's `extension` folder.
+1. Extract `dist/NOTA_Labeling_Organizer_Extension_v1.6.29.zip`, or use this repository's `extension` folder.
 2. In `chrome://extensions`, disable the older Organizer version. Click **Load unpacked** and select the folder containing `manifest.json`.
 3. Reload the DMS tab. Open **Labeling**, choose a label, and open a frame.
 4. Find **auto_load_img** and **Stop** directly below the part search field.
 
 ## Review checklist
 
+- Find **Done all** below a part's frame count in the left column. Scroll up/down inside a long part and resize the window: the checkbox and count should remain visible. Move into another part and verify its control takes over.
+- Tick Done all on a part you intend to complete. The count shows save progress, then all its clips/frames become Done. Untick it: all frames become In progress. Other parts, labels, and annotation boxes must stay unchanged. Check collapsed clips, a partially Done part (dash), and keyboard Space on the focused checkbox.
+- With **Show only unfinished** enabled, the action must still cover the complete current-label part. Completed parts disappear under that filter; disable it to see and untick the part again. If a request fails, the checkbox must reflect only successful saves and show an error; retry Done to save the remaining frames. Switching label/session during saving must stop new queued requests.
+- With auto_load_img running, Done all must advance its two-part cache only after the whole part's Done saves succeed. Test that opening/closing clips and scrolling during saves keep the control accessible.
 - Place a hand box against the bottom image edge. Drag its bottom-right handle horizontally while moving slightly in and out of the black margin: the width should keep following the pointer without freezing or jumping on re-entry. Release outside: the saved bottom edge should be clipped to the image.
 - Grab the outside half of a boundary handle. Repeat at all four image edges, while zoomed/panned, and with other bbox labels. Check that the box saves once on release, `Z` restores it for body/hand/eye, and losing window focus during a drag discards that unsaved drag. Viewer controls and empty-margin clicks must not start a bbox edit.
 - On body/hand/eye, press `C` in frame 2: all boxes should come from frame 1. Edit and save frame 3, then press C in frame 4: it should use the edited boxes. Leave frame 5 unchanged and press C in frame 6: it should use frame 5. Leave frame 7 empty and press C in frame 8: it should use frame 6.
@@ -59,6 +63,7 @@ python tests/test_timeline_lock.py
 python tests/test_playback.py
 python tests/test_bbox_previous.py
 python tests/test_bbox_drag.py
+python tests/test_part_done.py
 ```
 
 The image-loading tests use delayed local responses, actual IndexedDB and Chromium image decoding. They cover request limits, cache hits, Stop/resume, part transitions, failed optimistic Done saves, scope changes, failed image retries, quota errors, and integration with the Organizer. When the saved local DMS source is available, the integration check uses its original `getFrame` and `show` implementations.
@@ -74,3 +79,5 @@ The playback tests use 12,000 sidebar rows to verify that repeated navigation/lo
 The C-shortcut tests cover sequential and out-of-order navigation, saved/auto-label sources, hidden Done frames, explicit deletions, nearest nonempty lookup, all-box replacement, undo, Shift+C, clipboard isolation, and delayed-load cancellation/error cases. All data is local to the browser fixture.
 
 The boundary-drag tests check every intermediate movement across the bottom edge, outside handle starts, all 13 bbox labels, all four image boundaries, zoom/pan, single-save behavior, undo, pointer cancellation, focus loss, and editor/context guards. They use the original saved DMS mouse handlers when available, or a standalone canvas-only drag contract. These tests reproduce the boundary freeze locally; confirm the feel in your DMS tab as well.
+
+The part-status tests use local status responses to check full-part Done/In progress, mixed states, collapsed and hidden rows, label authorization, the four-request limit, progress, partial failures/retries, session changes, sticky positioning, resize and keyboard use. An integration check verifies the two-part preloader waits for successful Done saves before advancing. No live annotations or statuses are changed by these tests.

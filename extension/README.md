@@ -1,6 +1,6 @@
 # NOTA Labeling Organizer — usage guide
 
-**Version 1.6.28 · English**
+**Version 1.6.29 · English**
 
 For installation screenshots and the complete shortcut tables, see the [GitHub README](https://github.com/tanmainhat0502/dms_annotation_extension#readme).
 
@@ -18,6 +18,10 @@ Playback reuses the frame-list index and updates only the previous/current rows 
 To prevent accidental jumps, click the **padlock to the right of the bottom timeline**. A closed, gold lock blocks clicks and drags on the timeline; the progress display, `A` / `D`, `Space`, and sidebar frame selection still work. Click the lock again to allow timeline navigation. The timeline starts unlocked and remembers your choice after a page reload.
 
 Each clip has **Done**, **Not checked**, and **In progress** buttons that set the entire clip's status. A checkpoint marks the last edited frame. The list preserves its scroll position during edits and brings newly opened frames into view.
+
+To set an entire part's status, use **Done all** below its frame count in the left column. Tick it to mark all frames **Done**; untick it to make all frames **In progress**. A dash means only some frames are Done. The count and checkbox stay visible while scrolling within that part.
+
+This action covers the current label's whole part, including closed clips and frames hidden by **Show only unfinished**. It pauses playback, shows saved/total progress, and saves up to four frames at a time. Other parts, labels, and annotations stay unchanged. A failed request stops further saves; successful saves remain. Switching session, label, or mode stops queued requests. When the unfinished filter hides a completed part, turn it off to reopen that part with the checkbox.
 
 While you scroll through an expanded clip, its header stays below the search/image-loading toolbar. You can collapse the clip or use its status buttons without scrolling back to the beginning. The next clip's header takes its place as you scroll into that clip.
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.6.29 - 2026-10-21
+
+- Add a sticky Done all checkbox below each part's frame count. Check to mark the current label's complete part Done; uncheck to set every frame In progress. Show an intermediate state for partially completed parts.
+- Include collapsed clips and Done frames hidden by the unfinished filter. Keep the counter and checkbox visible while scrolling within the part, and show save progress with at most four concurrent status requests.
+- Reflect successful saves only, stop queued writes on errors or session/label/mode changes, and preserve unrelated parts, labels, and annotations. Keep status controls usable after bulk edits and undo.
+- Add browser coverage for full-part scope, failures/retries, sticky scroll/resize, keyboard access, and automatic preloader advancement after successful completion; update the English guides.
+
 ## 1.6.28 - 2026-10-21
 
 - Keep native bbox drags receiving pointer movement when a corner or edge crosses the image boundary, fixing freezes and jumps while dragging horizontally along the bottom edge.

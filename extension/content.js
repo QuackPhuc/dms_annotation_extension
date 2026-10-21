@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.6.28";
+  const VERSION = "1.6.29";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";
@@ -38,6 +38,9 @@
     timeline: null,
     navigation: null,
     currentClip: null,
+    partIndex: null,
+    partStatusOperation: null,
+    partScopes: new WeakMap(),
     input: null,
     status: null,
     empty: null,
@@ -278,13 +281,31 @@
         flex: 1;
         min-width: 0;
       }
-      #labList .nl-organized > .vlab { position: relative; }
-      #labList .nl-part-total {
+      #labList .nl-organized > .vlab {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        writing-mode: horizontal-tb;
+      }
+      #labList .nl-part-name { writing-mode: vertical-rl; text-orientation: upright; }
+      #labList .nl-part-tools {
         position: sticky;
         top: calc(var(--nl-toolbar-height, 0px) + 4px);
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        margin-top: 7px;
+        background: #23272e;
+        border-radius: 4px;
+        letter-spacing: 0;
+      }
+      #labList .nl-part-total {
         display: inline-flex;
         align-items: center;
-        margin-top: 7px;
         padding: 5px 2px;
         border: 1px solid #397a9f;
         border-radius: 4px;
@@ -296,6 +317,21 @@
         white-space: nowrap;
         writing-mode: vertical-rl;
       }
+      #labList .nl-part-done-label {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 1px;
+        color: #8cffaa;
+        font-size: 10px;
+        line-height: 1.1;
+        cursor: pointer;
+      }
+      #labList .nl-part-done-label > span { writing-mode: vertical-rl; text-orientation: mixed; }
+      #labList .nl-part-done { width: 16px; height: 16px; margin: 0; accent-color: #39b767; cursor: pointer; }
+      #labList .nl-part-done:disabled { cursor: progress; }
+      #labList .nl-part-tools[aria-busy="true"] { opacity: .7; }
       #labList > .grp[hidden] { display: none !important; }
       #labList .nl-clip {
         border-bottom: 1px solid rgba(255,255,255,.06);
@@ -1369,6 +1405,7 @@
     const nativeRender = renderLabList;
     renderLabList = function (...args) {
       state.navigation = null;
+      state.partIndex = null;
       if (state.renderingSidebar) return nativeRender.apply(this, args);
       const position = captureSidebarPosition();
       state.renderingSidebar = true;
@@ -1484,6 +1521,7 @@
       }
     }
     for (const details of state.list?.querySelectorAll(".nl-clip") || []) refreshClipSummary(details);
+    refreshPartStatusControls();
   }
 
   function ensureStatusRendering() {
@@ -1536,11 +1574,27 @@
     }
     if (!buckets.size) return;
 
+    const partLabel = document.createElement("span");
+    partLabel.className = "nl-part-name";
+    partLabel.textContent = partName;
+    const partTools = document.createElement("div");
+    partTools.className = "nl-part-tools";
     const partTotal = document.createElement("span");
     partTotal.className = "nl-part-total";
-    partTotal.textContent = `${Array.from(buckets.values()).reduce((sum, items) => sum + items.length, 0)} frames`;
-    partTotal.title = `Total frames in part ${partName}`;
-    label.appendChild(partTotal);
+    const doneLabel = document.createElement("label");
+    doneLabel.className = "nl-part-done-label";
+    const done = document.createElement("input");
+    done.type = "checkbox";
+    done.className = "nl-part-done";
+    done.setAttribute("aria-label", `Done all frames in part ${partName}`);
+    const caption = document.createElement("span");
+    caption.textContent = "Done all";
+    doneLabel.append(done, caption);
+    done.addEventListener("change", () => { setWholePartState(row, done.checked ? "done" : "wip"); });
+    doneLabel.addEventListener("keydown", (event) => event.stopPropagation());
+    doneLabel.addEventListener("click", (event) => event.stopPropagation());
+    partTools.append(partTotal, doneLabel);
+    label.replaceChildren(partLabel, partTools);
 
     // Move the large native list off the live document before redistributing
     // its rows. This avoids thousands of connected-DOM mutation/layout steps.
@@ -1642,6 +1696,7 @@
     }
 
     row.dataset.partName = partName;
+    state.partScopes.set(row, { session: S.sess, generation: S.gen, label: S.labelSel });
     row.classList.add("nl-organized");
     anchor.replaceWith(clips);
   }
@@ -1659,8 +1714,111 @@
       const value = button.dataset.state;
       const current = value === "done" ? allDone : value === "wip" ? allWip : allTodo;
       button.classList.toggle("current", current);
-      button.disabled = current;
+      button.disabled = current || state.operationBusy;
       button.setAttribute("aria-pressed", String(current));
+    }
+  }
+
+  function framePartKey(g) {
+    const clip = clipAt(g);
+    return clip ? (clip.long ? "__long" : clip.cat) : "__none";
+  }
+
+  function partFrames(row) {
+    const visible = () => Array.from(row.querySelectorAll("li[data-g]"), (li) => Number(li.dataset.g));
+    if (!S.review || typeof rvG !== "function" || typeof clipAt !== "function") return visible();
+    let index = state.partIndex;
+    if (!index || index.session !== S.sess || index.generation !== S.gen ||
+        index.label !== S.labelSel || index.review !== S.review) {
+      index = { session: S.sess, generation: S.gen, label: S.labelSel, review: S.review, groups: new Map() };
+      const frames = [...new Set(Object.values(S.review).filter((item) => item.labels?.includes(S.labelSel))
+        .map((item) => rvG(item)).filter((g) => Number.isInteger(g) && g >= 0))].sort((a, b) => a - b);
+      for (const g of frames) {
+        const key = framePartKey(g);
+        if (!index.groups.has(key)) index.groups.set(key, []);
+        index.groups.get(key).push(g);
+      }
+      state.partIndex = index;
+    }
+    const first = row.querySelector("li[data-g]");
+    return first ? index.groups.get(framePartKey(Number(first.dataset.g))) || [] : [];
+  }
+
+  function partStatusMatches(operation) {
+    return operation && pageLabelingReady(operation.label) && S.sess === operation.session &&
+      S.gen === operation.generation;
+  }
+
+  function refreshPartStatusControls() {
+    if (!pageLabelingReady()) return;
+    for (const row of state.list?.querySelectorAll(":scope > .grp.nl-organized") || []) {
+      const input = row.querySelector(".nl-part-done");
+      if (!input) continue;
+      const frames = partFrames(row);
+      const count = frames.reduce((total, g) => total + (frameState(g) === "done" ? 1 : 0), 0);
+      input.checked = frames.length > 0 && count === frames.length;
+      input.indeterminate = count > 0 && count < frames.length;
+      input.disabled = !frames.length || state.operationBusy;
+      input.title = `${count}/${frames.length} Done · Check: all Done · Uncheck: all In progress`;
+      const operation = state.partStatusOperation;
+      const busy = partStatusMatches(operation) && operation.name === row.dataset.partName;
+      const tools = row.querySelector(".nl-part-tools");
+      tools.setAttribute("aria-busy", String(Boolean(busy)));
+      const total = tools.querySelector(".nl-part-total");
+      const caption = busy ? `${operation.completed}/${operation.total}` : `${frames.length} frames`;
+      if (total.textContent !== caption) total.textContent = caption;
+      total.title = busy ? `Saving ${operation.completed}/${operation.total} frames` :
+        `Total frames in part ${row.dataset.partName}`;
+    }
+  }
+
+  function refreshStatusControls() {
+    refreshPartStatusControls();
+    for (const details of state.list?.querySelectorAll(".nl-clip") || []) refreshClipStatusControls(details);
+  }
+
+  async function setWholePartState(row, value) {
+    if (!partStatusMatches(state.partScopes.get(row)) || state.operationBusy || !row.isConnected) {
+      refreshPartStatusControls();
+      return;
+    }
+    state.partIndex = null;
+    const targets = partFrames(row).filter((g) => frameState(g) !== value);
+    if (!targets.length) { refreshPartStatusControls(); return; }
+    const operation = {
+      session: S.sess, generation: S.gen, label: S.labelSel, name: row.dataset.partName,
+      completed: 0, total: targets.length
+    };
+    state.operationBusy = true;
+    state.partStatusOperation = operation;
+    refreshStatusControls();
+    try {
+      if (typeof pause === "function") pause();
+      const result = await runQueue(targets, async (g) => {
+        if (!partStatusMatches(operation)) throw new Error("The session or label has changed");
+        await saveFrameState(g, operation.label, value, operation.generation, operation.session);
+        if (!partStatusMatches(operation)) throw new Error("The session or label has changed");
+      }, (completed) => {
+        operation.completed = completed;
+        if (!partStatusMatches(operation)) return;
+        // Update progress without rescanning the part or rebuilding its list
+        // for every response. Status badges refresh once after the batch.
+        for (const group of state.list.querySelectorAll(":scope > .grp.nl-organized")) {
+          if (group.dataset.partName !== operation.name) continue;
+          group.querySelector(".nl-part-total").textContent = `${completed}/${targets.length}`;
+        }
+      });
+      if (partStatusMatches(operation)) {
+        if (typeof fsRender === "function") fsRender();
+        const caption = value === "done" ? "Done" : "In progress";
+        notify(result.error
+          ? `${operation.name}: saved ${result.completed}/${targets.length}; stopped on error: ${result.error.message}`
+          : `${operation.name}: all frames set to ${caption}`);
+      }
+    } finally {
+      state.partStatusOperation = null;
+      state.operationBusy = false;
+      refreshStatusControls();
     }
   }
 
@@ -1717,8 +1875,8 @@
     else frame[label] = { s: value };
   }
 
-  async function saveFrameState(g, label, value, expectedGeneration) {
-    if (S.gen !== expectedGeneration) throw new Error("The session has changed");
+  async function saveFrameState(g, label, value, expectedGeneration, expectedSession = S.sess) {
+    if (S.gen !== expectedGeneration || S.sess !== expectedSession) throw new Error("The session has changed");
     const [segmentIndex, frameIndex] = loc(g);
     const segment = S.sess.segments[segmentIndex];
     const data = await requestJson("/api/frame_status", {
@@ -1733,7 +1891,7 @@
         state: value
       })
     });
-    if (S.gen !== expectedGeneration) throw new Error("The session has changed");
+    if (S.gen !== expectedGeneration || S.sess !== expectedSession) throw new Error("The session has changed");
     updateFrameState(g, label, value, data);
   }
 
@@ -1750,6 +1908,7 @@
       return;
     }
     state.operationBusy = true;
+    refreshStatusControls();
     const control = sourceButton.closest(".nl-clip-status-actions");
     control.dataset.busy = "true";
     control.setAttribute("aria-busy", "true");
@@ -1774,6 +1933,7 @@
       control.removeAttribute("aria-busy");
       if (sourceButton.isConnected) sourceButton.textContent = originalText;
       if (control.isConnected && S.gen === generation) refreshClipStatusControls(details);
+      refreshStatusControls();
     }
   }
 
@@ -2161,6 +2321,7 @@
       notify(`Could not undo: ${error.message}`);
     } finally {
       state.operationBusy = false;
+      refreshStatusControls();
     }
   }
 
@@ -3626,6 +3787,7 @@
       preview.textContent = `Stopped on error: ${error.message}`;
     } finally {
       state.operationBusy = false;
+      refreshStatusControls();
       if (apply.isConnected) apply.disabled = false;
     }
   }
@@ -3746,6 +3908,7 @@
       preview.textContent = `Stopped on error: ${error.message}`;
     } finally {
       state.operationBusy = false;
+      refreshStatusControls();
       if (apply.isConnected) apply.disabled = false;
     }
   }
@@ -3791,6 +3954,7 @@
       preview.textContent = `Stopped on error: ${error.message}. Frames not yet reopened remain selected.`;
     } finally {
       state.operationBusy = false;
+      refreshStatusControls();
       if (apply.isConnected && dialog.open) {
         apply.disabled = !Array.from(state.markedFrames).some((g) => frameState(g) === "done");
       }
@@ -3853,6 +4017,7 @@
       preview.textContent = `Stopped on error: ${error.message}`;
     } finally {
       state.operationBusy = false;
+      refreshStatusControls();
       if (apply.isConnected) apply.disabled = false;
     }
   }
@@ -4491,7 +4656,8 @@
           ul.appendChild(li);
         }
         clips.replaceWith(ul);
-        row.querySelector(":scope > .vlab .nl-part-total")?.remove();
+        const label = row.querySelector(":scope > .vlab");
+        if (label) label.textContent = row.dataset.partName;
         row.classList.remove("nl-organized");
         delete row.dataset.partName;
         row.hidden = false;
@@ -4545,6 +4711,7 @@
   function enhance() {
     state.scheduled = false;
     state.navigation = null;
+    state.partIndex = null;
     if (!state.list || !state.list.isConnected) return;
     ensureTimelineLock();
 
@@ -4575,7 +4742,7 @@
     state.applying = true;
     try {
       for (const row of state.list.querySelectorAll(":scope > .grp")) organizeGroup(row);
-      for (const details of state.list.querySelectorAll(".nl-clip")) refreshClipStatusControls(details);
+      refreshStatusControls();
       ensureCurrentClipOpen();
       applyFilter();
       updateMarkedUI();
@@ -4647,6 +4814,8 @@
     state.observer = new MutationObserver((mutations) => {
       if (state.applying) return;
       const relevant = mutations.some((mutation) => {
+        const target = mutation.target.nodeType === Node.ELEMENT_NODE ? mutation.target : mutation.target.parentElement;
+        if (target?.closest(".nl-part-tools")) return false;
         if (mutation.type === "childList") return true;
         if (mutation.type === "characterData") return true;
         if (mutation.type !== "attributes" || mutation.attributeName !== "class") return false;

@@ -2,7 +2,7 @@
 
 A Chrome extension for faster annotation in **DMS Labeling**. Group frames by clip, edit labels with keyboard shortcuts, and repeat changes across multiple frames.
 
-**Version 1.6.28 · English**
+**Version 1.6.29 · English**
 
 [Download the latest release](https://github.com/tanmainhat0502/dms_annotation_extension/releases/latest) · [Detailed usage guide](extension/README.md) · [Changelog](CHANGELOG.md)
 
@@ -54,6 +54,7 @@ Reload your DMS tab and open **Labeling**. Search for a part, expand a clip such
 | Lock the timeline | Click the padlock to the right of the bottom timeline. When locked, clicking or dragging the timeline cannot jump to another frame. `A` / `D`, `Space`, and sidebar frame selection still work. Click again to unlock; your choice is remembered after reload. |
 | Load images ahead | Click **auto_load_img** to download the current part and the next unfinished part in the background. See their combined image count; **Stop** pauses and keeps downloaded images. |
 | Set clip status | Click **Done**, **Not checked**, or **In progress** on a clip to apply that status to every frame in it. |
+| Set the whole part Done | Tick **Done all** below the part's frame count in the left column. Untick to set all its frames to **In progress**. The control follows scrolling within the part; a dash means only some frames are Done. |
 | Edit bounding boxes | Press `N` and click two opposite corners to create a box. Use `M` to draw a region that deletes boxes inside it. Handles keep tracking the pointer across image edges; boxes dragged outside are clipped on release. |
 | Copy annotations | Press `Ctrl+B` to copy boxes, eye 15pt, face 7pt, or seatbelt edits to previous/next frames. Enter a frame count or `end` to reach the clip boundary. |
 | Copy one box | Select a box, then use `Ctrl+B`. Matching target boxes are replaced and duplicates merged; other objects stay. If there is no match, a new box is added. Choosing all boxes replaces the entire target box list. |
@@ -65,6 +66,8 @@ Reload your DMS tab and open **Labeling**. Search for a part, expand a clip such
 **Bulk editing:** the frame count excludes the current frame. Previous/next operations stay inside the current clip and skip **Done** frames. Saved **Not checked** frames become **In progress**. For body/hand/eye boxes, marked targets may span clips within the same session and label.
 
 **Box matching uses geometry**, not visual object recognition. Boxes that overlap by at least 90% IoU are highlighted red. The image also shows a bbox count.
+
+**Done all** affects the current label across the entire part, including collapsed clips and hidden Done frames. It shows save progress and sends at most four status requests at once. If a save fails, completed saves remain and the checkbox reflects the actual result. With **Show only unfinished** enabled, completed parts disappear; turn that filter off to untick and reopen one.
 
 ## Automatic image loading
 
