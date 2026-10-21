@@ -1,6 +1,6 @@
 # NOTA Labeling Organizer — usage guide
 
-**Version 1.6.25 · English**
+**Version 1.6.28 · English**
 
 For installation screenshots and the complete shortcut tables, see the [GitHub README](https://github.com/tanmainhat0502/dms_annotation_extension#readme).
 
@@ -12,6 +12,8 @@ For installation screenshots and the complete shortcut tables, see the [GitHub R
 4. Expand a clip (`#01`, `#02`, etc.) and open a frame.
 
 `A` / `D` navigate the visible list; `Shift+A` / `Shift+D` move 10 frames. `Space` plays that same list and stops at its end. Clearing the search with `Esc` or `×` restores all parts.
+
+Playback reuses the frame-list index and updates only the previous/current rows to reduce stuttering on large lists, including when images are cached. Filter, label, session, and list changes refresh this index automatically.
 
 To prevent accidental jumps, click the **padlock to the right of the bottom timeline**. A closed, gold lock blocks clicks and drags on the timeline; the progress display, `A` / `D`, `Space`, and sidebar frame selection still work. Click the lock again to allow timeline navigation. The timeline starts unlocked and remembers your choice after a page reload.
 
@@ -61,11 +63,15 @@ Supported labels: body, head, face, nose, mouth, eye, hand, cigarette, e-cigaret
 
 Matching compares box geometry with the source layout; it does not recognize people or objects from image pixels. Small boxes inside larger boxes remain separate when their geometry identifies distinct objects. Boxes with at least 90% IoU are shown in red; the image corner shows the box count.
 
-Dragging or resizing outside the image is allowed. On release, the outside portion is clipped to the image boundary.
+Dragging or resizing continues when the pointer crosses into the black margin, including horizontal drags along the bottom image edge. You can grab the part of a boundary handle that lies just outside the image. On release, the outside portion is clipped to the image boundary and the box is saved once. Losing window focus or canceling the pointer restores the unsaved drag.
 
 ### Body, hand, and eye box shortcuts
 
-`X` deletes all boxes; `1` / `2` delete the leftmost / rightmost box. `C` copies all boxes from the previously viewed frame with the same label. `Shift+X` and `Shift+C` perform the action and advance one frame.
+`X` deletes all boxes; `1` / `2` delete the leftmost / rightmost box. `Shift+X` deletes all and advances one frame.
+
+`C` replaces all boxes in the current frame with those from the **nearest earlier frame of the same label that has boxes**. It searches backward by frame number in the current session, skipping empty frames, including frames you have not opened and Done frames hidden by only-todo. Saved edits take precedence over auto-labels; a saved empty list remains empty. If no earlier frame has boxes, the current frame stays unchanged.
+
+Example: C at frame 2 copies frame 1; after editing frame 3, C at frame 4 copies the edited frame 3. C at frame 6 uses frame 5 even if you did not edit it. If frame 7 is empty, C at frame 8 uses frame 6. `Shift+C` copies and advances once; `Z` restores the target's previous boxes. The notification identifies the source frame. Changing frames/labels/sessions or editing the target while source data loads cancels that pending copy.
 
 `Ctrl+C` / `Ctrl+V` copy and paste between nonadjacent frames (`Cmd` also works). A selected box uses geometry matching; copying all boxes replaces the target list. `V` marks frames, `Ctrl+B` repeats the latest operation, and `Z` undoes it. One `Z` restores an entire bbox batch.
 

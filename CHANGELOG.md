@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.6.28 - 2026-10-21
+
+- Keep native bbox drags receiving pointer movement when a corner or edge crosses the image boundary, fixing freezes and jumps while dragging horizontally along the bottom edge.
+- Let the outside half of a boundary handle start a drag. Preserve native resize geometry, clip outside coordinates on release, save once, and retain undo and single-edge bulk adjustments. Cancel an unsaved drag on pointer cancellation or window focus loss.
+- Add Chromium regression coverage for continuous movement, all 13 bbox labels, four image edges, zoom/pan, save/undo, and context guards.
+- Publish together with the cached Space-playback optimization and nearest-previous-frame C behavior from 1.6.26 and 1.6.27.
+
+## 1.6.27 - 2026-10-21
+
+- Change body/hand/eye C to copy all boxes from the nearest earlier nonempty frame of the same label and session, using chronological frame order instead of visit history. Include unvisited and hidden Done frames; prefer saved edits and skip explicit empty edits.
+- Preserve whole-target replacement, Z undo, and Shift+C advancement. Leave the target unchanged when no source exists or source annotations cannot be read.
+- Cancel pending copies when the target frame, session, label, or boxes change; guard repeated presses and active editing gestures. Remove the obsolete visit-history snapshots.
+- Add browser regression coverage for the requested frame sequence, empty-frame fallback, current saved edits, async races, and independent Ctrl+C/Ctrl+V behavior; update the English guides.
+
+## 1.6.26 - 2026-10-21
+
+- Reduce Space playback stalls on large lists by indexing frame positions once and reusing that index for navigation and lookahead, instead of repeatedly scanning the full sidebar.
+- Update only the previous/current frame rows and clip highlight during playback. Avoid refreshing every clip and marked-frame control for a highlight-only change; retain status panels, only-todo filtering, frame history, and scroll behavior.
+- Rebuild the index on filter, list, label, or session changes. Keep image-download limits and bitmap caching unchanged.
+- Add a 12,000-frame regression check and native cached Space-playback integration test with local responses.
+
 ## 1.6.25 - 2026-10-21
 
 - Add a padlock beside the bottom timeline to prevent accidental frame jumps from clicks or drags. Keep keyboard navigation, playback, and sidebar frame selection available while locked.

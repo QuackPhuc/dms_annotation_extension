@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.6.25";
+  const VERSION = "1.6.28";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";
@@ -36,6 +36,8 @@
     toolbar: null,
     toolbarObserver: null,
     timeline: null,
+    navigation: null,
+    currentClip: null,
     input: null,
     status: null,
     empty: null,
@@ -85,8 +87,8 @@
     bboxDeleteRegion: null,
     bboxClipboard: null,
     bboxUndo: [],
-    quickFrameCurrent: null,
-    quickFramePrevious: null,
+    bboxCopyRequest: null,
+    bboxPointerCapture: null,
     quickLastOperation: null,
     bboxEdgePatch: null,
     renderingSidebar: false,
@@ -629,26 +631,37 @@
     }
   }
 
-  function organizedNavigationRows() {
-    if (!state.list) return [];
-    const allRows = Array.from(state.list.querySelectorAll(".grp.nl-organized li[data-g]"));
-    if (!allRows.length) return [];
-    const visibleRows = Array.from(state.list.querySelectorAll(".grp.nl-organized:not([hidden]) li[data-g]"));
-    const active = Number.isInteger(S.g) && allRows.some((li) => Number(li.dataset.g) === S.g)
-      ? S.g
-      : S.shownG;
-    return visibleRows.some((li) => Number(li.dataset.g) === active) ? visibleRows : allRows;
+  function organizedNavigationIndex() {
+    if (!state.list || typeof S === "undefined") return null;
+    const cached = state.navigation;
+    if (cached && cached.session === S.sess && cached.generation === S.gen &&
+        cached.label === S.labelSel && cached.sequence === S.lseq &&
+        cached.all.rows[0]?.isConnected) return cached;
+    const rows = Array.from(state.list.querySelectorAll(".grp.nl-organized li[data-g]"));
+    if (!rows.length) return null;
+    const index = (list) => ({ rows: list, positions: new Map(list.map((li, i) => [Number(li.dataset.g), i])) });
+    state.navigation = {
+      session: S.sess, generation: S.gen, label: S.labelSel, sequence: S.lseq,
+      all: index(rows), visible: index(rows.filter((li) => !li.closest(".grp").hidden)),
+      current: rows.find((li) => li.classList.contains("cur")) || null
+    };
+    return state.navigation;
+  }
+
+  function organizedNavigationAt(g) {
+    const navigation = organizedNavigationIndex();
+    if (!navigation) return null;
+    return navigation.visible.positions.has(g) ? navigation.visible : navigation.all;
   }
 
   function navigateOrganizedFrames(direction, amount = 1) {
     if (!pageLabelingReady() || typeof show !== "function") return false;
-    const rows = organizedNavigationRows();
-    if (!rows.length) return false;
-    const active = Number.isInteger(S.g) && rows.some((li) => Number(li.dataset.g) === S.g)
-      ? S.g
-      : S.shownG;
-    const index = rows.findIndex((li) => Number(li.dataset.g) === active);
-    if (index < 0) return false;
+    const navigation = organizedNavigationIndex();
+    if (!navigation) return false;
+    const active = navigation.all.positions.has(S.g) ? S.g : S.shownG;
+    const { rows, positions } = organizedNavigationAt(active);
+    const index = positions.get(active);
+    if (index === undefined) return false;
     const nextIndex = Math.max(0, Math.min(rows.length - 1, index + Math.sign(direction) * Math.max(1, amount)));
     if (nextIndex === index) return true;
     const next = Number(rows[nextIndex].dataset.g);
@@ -673,10 +686,12 @@
     const nativePlayNext = playNext;
     playNext = function (g, step = 1) {
       if (!pageLabelingReady()) return nativePlayNext.apply(this, arguments);
-      const rows = organizedNavigationRows();
-      if (!rows.length) return nativePlayNext.apply(this, arguments);
-      const index = rows.findIndex((li) => Number(li.dataset.g) === g);
-      if (index < 0) return nativePlayNext.apply(this, arguments);
+      // The player asks for this once per displayed frame and repeatedly for
+      // lookahead. Index the list once, not once per prefetch candidate.
+      const navigation = organizedNavigationAt(g);
+      const index = navigation?.positions.get(g);
+      if (index === undefined) return nativePlayNext.apply(this, arguments);
+      const rows = navigation.rows;
       const distance = Math.max(1, Math.abs(Number(step) || 1));
       const nextIndex = Math.min(rows.length - 1, index + distance);
       const next = Number(rows[nextIndex].dataset.g);
@@ -1343,9 +1358,9 @@
       : position.top;
   }
 
-  function revealCurrentFrame() {
-    ensureCurrentClipOpen();
-    state.list.querySelector("li.cur")?.scrollIntoView({ block: "nearest" });
+  function revealCurrentFrame(current = state.list?.querySelector("li.cur")) {
+    ensureCurrentClipOpen(current);
+    current?.scrollIntoView({ block: "nearest" });
   }
 
   function ensureSidebarRendering() {
@@ -1353,6 +1368,7 @@
         typeof rvMarkLab !== "function") return;
     const nativeRender = renderLabList;
     renderLabList = function (...args) {
+      state.navigation = null;
       if (state.renderingSidebar) return nativeRender.apply(this, args);
       const position = captureSidebarPosition();
       state.renderingSidebar = true;
@@ -1373,8 +1389,29 @@
     };
     const nativeMark = rvMarkLab;
     rvMarkLab = function (...args) {
+      if (!state.renderingSidebar && pageLabelingReady()) {
+        // Preserve the native only-todo rebuild when a completed frame must
+        // leave the list. In the common playback path only two rows change.
+        const needsRebuild = S.onlyTodo && typeof fsGet === "function" &&
+          S.lseq?.some((g) => fsGet(g) === "done");
+        const navigation = needsRebuild ? null : organizedNavigationIndex();
+        const index = navigation?.all.positions.get(Number(S.shownG));
+        const current = index === undefined ? null : navigation.all.rows[index];
+        if (current?.isConnected) {
+          if (navigation.current !== current || !current.classList.contains("cur")) {
+            navigation.current?.classList.remove("cur");
+            current.classList.add("cur");
+            navigation.current = current;
+            revealCurrentFrame(current);
+          }
+          if (typeof lsBoxRender === "function") lsBoxRender();
+          if (typeof r2Render === "function") r2Render();
+          return;
+        }
+      }
       const position = state.renderingSidebar ? null : captureSidebarPosition();
       const result = nativeMark.apply(this, args);
+      state.navigation = null;
       if (!state.renderingSidebar && pageLabelingReady()) {
         // Repaints also call scrollIntoView. Preserve the user's viewport on
         // the same frame, while genuine navigation still reveals the new row.
@@ -1904,25 +1941,6 @@
       operation.label === S.labelSel && Number(operation.source ?? operation.g) === Number(S.shownG));
   }
 
-  function trackQuickFrameHistory() {
-    if (!quickBboxReady() || typeof ED === "undefined" || !Array.isArray(ED.items) ||
-        ED.key !== rvKey(S.shownG) || ED.lab !== S.labelSel) return;
-    const snapshot = {
-      generation: S.gen,
-      session: S.sess,
-      label: S.labelSel,
-      g: Number(S.shownG),
-      key: ED.key,
-      items: cloneGenericItems(ED.items)
-    };
-    const current = state.quickFrameCurrent;
-    if (current && (current.generation !== snapshot.generation || current.session !== snapshot.session ||
-        current.label !== snapshot.label || current.g !== snapshot.g)) {
-      state.quickFramePrevious = current;
-    }
-    state.quickFrameCurrent = snapshot;
-  }
-
   function rememberBboxUndo(frames, remote = false) {
     if (!bboxLabelingReady() || !frames?.length) return;
     state.bboxUndo.push({
@@ -1954,7 +1972,6 @@
     try { if (typeof lsTouch === "function") lsTouch(); } catch (_) {}
     if (typeof edSave === "function") edSave();
     if (typeof edRepaint === "function") edRepaint();
-    trackQuickFrameHistory();
     if (message) notify(message);
     return true;
   }
@@ -1996,18 +2013,78 @@
     return changed;
   }
 
-  function copyPreviousQuickBbox(advance = false) {
-    if (!quickBboxReady() || !bboxEditingAvailable()) return false;
-    const previous = state.quickFramePrevious;
-    if (!previous || previous.generation !== S.gen || previous.session !== S.sess ||
-        previous.label !== S.labelSel || previous.g === Number(S.shownG)) {
-      notify("No previously viewed frame with the same label to copy from");
+  function previousQuickBboxFrames(target) {
+    // Include Done frames hidden by only-todo, and frames never opened in this
+    // tab. Read only frames authorized for the current session and label.
+    const frames = S.review && typeof rvG === "function"
+      ? Object.values(S.review).filter((item) => item.labels?.includes(S.labelSel)).map(rvG)
+      : Array.from(S.lseq || []);
+    return [...new Set(frames.filter((g) => Number.isInteger(g) && g >= 0 && g < target))]
+      .sort((left, right) => right - left);
+  }
+
+  function quickBboxCopyAvailable() {
+    return quickBboxReady() && bboxEditingAvailable() && !state.operationBusy &&
+      !state.bboxMode && !ED.drag && !ED.marq && !ED.poly?.length && !anyBulkDialogOpen() &&
+      !(typeof RV_OPEN !== "undefined" && RV_OPEN) && ED.lab === S.labelSel &&
+      ED.key === rvKey(S.shownG) && Number(S.g) === Number(S.shownG);
+  }
+
+  async function copyPreviousQuickBbox(advance = false) {
+    if (!quickBboxCopyAvailable()) return false;
+    const request = {
+      session: S.sess, generation: S.gen, label: S.labelSel,
+      g: Number(S.shownG), key: ED.key, items: ED.items,
+      snapshot: JSON.stringify(cloneGenericItems(ED.items))
+    };
+    const stillHere = () => quickBboxCopyAvailable() && S.sess === request.session &&
+      S.gen === request.generation && S.labelSel === request.label && Number(S.shownG) === request.g &&
+      ED.key === request.key && ED.items === request.items &&
+      JSON.stringify(cloneGenericItems(ED.items)) === request.snapshot;
+    const previousRequest = state.bboxCopyRequest;
+    if (previousRequest?.session === request.session && previousRequest.generation === request.generation &&
+        previousRequest.label === request.label && previousRequest.g === request.g) return false;
+    state.bboxCopyRequest = request;
+    try {
+      if (typeof pause === "function") pause();
+      const frames = previousQuickBboxFrames(request.g);
+      for (let index = 0; index < frames.length; index++) {
+        if (state.bboxCopyRequest !== request || !stillHere()) return false;
+        const g = frames[index];
+        const loaded = await getFrameGenericItems(g, request.label, request.generation);
+        if (state.bboxCopyRequest !== request || !stillHere()) return false;
+        // A saved edit (including an explicit empty array) always wins over
+        // auto-label data, including edits arriving while a segment was loading.
+        const saved = S.ledits?.[rvKey(g)]?.[request.label];
+        const [segmentIndex] = loc(g);
+        if (!Array.isArray(saved) && S.sess.segments?.[segmentIndex]?.al && !S.al?.get(segmentIndex)) {
+          throw new Error("Source annotations are unavailable. Reload DMS and try again.");
+        }
+        const items = cloneGenericItems(Array.isArray(saved) ? saved : loaded).filter((item) =>
+          Array.isArray(item.box) && item.box.every(Number.isFinite) &&
+          item.box[2] > item.box[0] && item.box[3] > item.box[1]);
+        if (items.length) {
+          const changed = replaceCurrentBboxItems(items, { type: "copy" },
+            `Copied ${items.length} ${genericLabelName(request.label)} boxes from frame ${g + 1} · Z to undo`);
+          request.snapshot = JSON.stringify(cloneGenericItems(ED.items));
+          if (changed && advance) setTimeout(() => {
+            if (stillHere()) navigateOrganizedFrames(1);
+          }, 40);
+          return changed;
+        }
+        // A long run of empty frames must not monopolize the UI microtask queue.
+        if (index % 64 === 63) await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+      if (state.bboxCopyRequest === request && stillHere()) {
+        notify(`No earlier ${genericLabelName(request.label)} frame with boxes to copy from`);
+      }
       return false;
+    } catch (error) {
+      if (state.bboxCopyRequest === request && stillHere()) notify(`Could not copy boxes: ${error.message}`);
+      return false;
+    } finally {
+      if (state.bboxCopyRequest === request) state.bboxCopyRequest = null;
     }
-    const changed = replaceCurrentBboxItems(previous.items, { type: "copy" },
-      `Copied ${previous.items.length} boxes from the previously viewed frame`);
-    if (changed && advance) setTimeout(() => navigateOrganizedFrames(1), 40);
-    return changed;
   }
 
   function copyQuickBboxToClipboard() {
@@ -2429,6 +2506,50 @@
       : "No boxes in the delete region · keep drawing or press Esc");
   }
 
+  function bboxPointerDragAvailable() {
+    return !state.bboxMode && !state.operationBusy && bboxEditingAvailable() && !ED.poly?.length &&
+      !(typeof RV_OPEN !== "undefined" && RV_OPEN) && ED.lab === S.labelSel &&
+      ED.key === rvKey(S.shownG) && Number(S.g) === Number(S.shownG);
+  }
+
+  function onBboxPointerDown(event) {
+    if (event.button !== 0 || event.shiftKey || !bboxPointerDragAvailable()) return;
+    const canvas = document.getElementById("view");
+    const stage = document.getElementById("stage");
+    if ((event.target !== canvas && event.target !== stage) || typeof hitTest !== "function") return;
+    const hit = hitTest(bboxEventPoint(event).canvasPoint);
+    if (!hit || (event.target !== canvas && hit.corner < 0)) return;
+    // Native bbox movement listens only on the canvas. Capture the pointer so
+    // that crossing an image edge keeps delivering the same native gesture,
+    // with its original starting point, through the final mouseup.
+    try {
+      canvas.setPointerCapture(event.pointerId);
+      state.bboxPointerCapture = {
+        id: event.pointerId, canvas, session: S.sess, generation: S.gen,
+        label: S.labelSel, key: ED.key, items: ED.items, index: hit.n
+      };
+    } catch (_) {}
+  }
+
+  function releaseBboxPointer(event) {
+    const captured = state.bboxPointerCapture;
+    if (!captured || (event.type !== "blur" && event.pointerId !== captured.id)) return;
+    state.bboxPointerCapture = null;
+    // Normal mouseup has already saved and cleared ED.drag. If the browser
+    // cancels capture or loses focus instead, discard only this unsaved drag.
+    if (S.sess === captured.session && S.gen === captured.generation && S.labelSel === captured.label &&
+        ED.key === captured.key && ED.items === captured.items && ED.drag?.n === captured.index) {
+      const item = ED.items[captured.index];
+      if (item && Array.isArray(ED.drag.box0)) item.box = ED.drag.box0.slice();
+      ED.drag = null;
+      if (bboxEdgePatchMatches() && !state.bboxEdgePatch.ready) state.bboxEdgePatch = null;
+      if (typeof edRepaint === "function") edRepaint();
+    }
+    try {
+      if (captured.canvas.hasPointerCapture(captured.id)) captured.canvas.releasePointerCapture(captured.id);
+    } catch (_) {}
+  }
+
   function onBboxMouseDown(event) {
     if (!bboxLabelingReady() || event.button !== 0) return;
     const bboxCanvas = document.getElementById("view");
@@ -2446,6 +2567,23 @@
     if (!bboxEditingAvailable()) return;
     const canvas = document.getElementById("view");
     const onCanvas = event.target === canvas;
+    if (event.target === bboxStage && !event.shiftKey && bboxPointerDragAvailable() &&
+        typeof hitTest === "function") {
+      const hit = hitTest(bboxEventPoint(event).canvasPoint);
+      // A handle centered on the boundary has half of its hit area in the
+      // black margin. Let that half start the same native drag as the image.
+      if (hit && hit.corner >= 0) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        canvas.dispatchEvent(new MouseEvent("mousedown", {
+          bubbles: true, cancelable: true, view: window,
+          clientX: event.clientX, clientY: event.clientY,
+          button: event.button, buttons: event.buttons,
+          ctrlKey: event.ctrlKey, altKey: event.altKey, metaKey: event.metaKey
+        }));
+        return;
+      }
+    }
     if (state.bboxMode === "delete") {
       if (!bboxDeleteTarget(event)) return;
       event.preventDefault();
@@ -4266,7 +4404,7 @@
         quickBboxReady() && event.code === "KeyC") {
       event.preventDefault();
       event.stopImmediatePropagation();
-      if (!event.repeat) copyPreviousQuickBbox(event.shiftKey);
+      if (!event.repeat && !event.isComposing) copyPreviousQuickBbox(event.shiftKey);
       return;
     }
     if (event.code === "Escape" && (state.manualMode || state.lastPatch) && !typing) {
@@ -4364,19 +4502,21 @@
     }
   }
 
-  function ensureCurrentClipOpen() {
-    if (!state.list) return;
-    for (const details of state.list.querySelectorAll(".nl-clip")) {
-      const hasCurrent = Boolean(details.querySelector("li.cur"));
-      details.classList.toggle("nl-current", hasCurrent);
-      if (hasCurrent && !details.open && !state.manuallyClosedClips.has(details.dataset.key)) {
-        details.open = true;
-        state.openClips.add(details.dataset.key);
-      }
+  function ensureCurrentClipOpen(current = state.list?.querySelector("li.cur")) {
+    const details = current?.closest(".nl-clip") || null;
+    if (state.currentClip !== details) {
+      state.currentClip?.classList.remove("nl-current");
+      details?.classList.add("nl-current");
+      state.currentClip = details;
+    }
+    if (details && !details.open && !state.manuallyClosedClips.has(details.dataset.key)) {
+      details.open = true;
+      state.openClips.add(details.dataset.key);
     }
   }
 
   function applyFilter() {
+    state.navigation = null;
     if (!state.list || !state.status) return;
     const query = normalize(state.filter);
     const rows = Array.from(state.list.querySelectorAll(":scope > .grp"));
@@ -4404,6 +4544,7 @@
 
   function enhance() {
     state.scheduled = false;
+    state.navigation = null;
     if (!state.list || !state.list.isConnected) return;
     ensureTimelineLock();
 
@@ -4438,7 +4579,6 @@
       ensureCurrentClipOpen();
       applyFilter();
       updateMarkedUI();
-      trackQuickFrameHistory();
       state.sidebarScope = typeof S !== "undefined" ? { generation: S.gen, label: S.labelSel } : null;
     } finally {
       // MutationObserver callbacks run after this function returns. Clear the
@@ -4495,6 +4635,10 @@
     window.addEventListener("scroll", positionMarkedBadge, true);
     window.addEventListener("mousemove", onBboxMouseMove, true);
     window.addEventListener("mousemove", onManualMouseMove, true);
+    window.addEventListener("pointerdown", onBboxPointerDown, true);
+    window.addEventListener("lostpointercapture", releaseBboxPointer, true);
+    window.addEventListener("pointercancel", releaseBboxPointer, true);
+    window.addEventListener("blur", releaseBboxPointer);
     window.addEventListener("mousedown", onBboxMouseDown, true);
     window.addEventListener("mousedown", onManualMouseDown, true);
     window.addEventListener("contextmenu", onViewContextMenu, true);
@@ -4504,14 +4648,21 @@
       if (state.applying) return;
       const relevant = mutations.some((mutation) => {
         if (mutation.type === "childList") return true;
-        return mutation.type === "attributes" && mutation.attributeName === "class";
+        if (mutation.type === "characterData") return true;
+        if (mutation.type !== "attributes" || mutation.attributeName !== "class") return false;
+        // Frame highlighting changes on every paint. It must not regroup the
+        // whole sidebar or refresh every clip's status during playback.
+        const stableClasses = (value) => String(value || "").split(/\s+/)
+          .filter((name) => name && name !== "cur" && name !== "nl-current").sort().join(" ");
+        return stableClasses(mutation.oldValue) !== stableClasses(mutation.target.className);
       });
-      if (relevant) scheduleEnhance();
+      if (relevant) { state.navigation = null; scheduleEnhance(); }
     });
     state.observer.observe(state.list, {
       childList: true,
       subtree: true,
       attributes: true,
+      attributeOldValue: true,
       attributeFilter: ["class"]
     });
     const title = document.getElementById("labTitle");

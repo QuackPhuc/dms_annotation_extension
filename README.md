@@ -2,7 +2,7 @@
 
 A Chrome extension for faster annotation in **DMS Labeling**. Group frames by clip, edit labels with keyboard shortcuts, and repeat changes across multiple frames.
 
-**Version 1.6.25 · English**
+**Version 1.6.28 · English**
 
 [Download the latest release](https://github.com/tanmainhat0502/dms_annotation_extension/releases/latest) · [Detailed usage guide](extension/README.md) · [Changelog](CHANGELOG.md)
 
@@ -54,7 +54,7 @@ Reload your DMS tab and open **Labeling**. Search for a part, expand a clip such
 | Lock the timeline | Click the padlock to the right of the bottom timeline. When locked, clicking or dragging the timeline cannot jump to another frame. `A` / `D`, `Space`, and sidebar frame selection still work. Click again to unlock; your choice is remembered after reload. |
 | Load images ahead | Click **auto_load_img** to download the current part and the next unfinished part in the background. See their combined image count; **Stop** pauses and keeps downloaded images. |
 | Set clip status | Click **Done**, **Not checked**, or **In progress** on a clip to apply that status to every frame in it. |
-| Edit bounding boxes | Press `N` and click two opposite corners to create a box. Use `M` to draw a region that deletes boxes inside it. Boxes dragged outside the image are clipped on release. |
+| Edit bounding boxes | Press `N` and click two opposite corners to create a box. Use `M` to draw a region that deletes boxes inside it. Handles keep tracking the pointer across image edges; boxes dragged outside are clipped on release. |
 | Copy annotations | Press `Ctrl+B` to copy boxes, eye 15pt, face 7pt, or seatbelt edits to previous/next frames. Enter a frame count or `end` to reach the clip boundary. |
 | Copy one box | Select a box, then use `Ctrl+B`. Matching target boxes are replaced and duplicates merged; other objects stay. If there is no match, a new box is added. Choosing all boxes replaces the entire target box list. |
 | Adjust any bbox edge | For every bbox label, double-click the middle handle of the top, bottom, left, or right edge and drag it. `Ctrl+B` applies that edge's exact position to matching boxes, preserving their other three edges. A missing match adds the edited source box. |
@@ -75,6 +75,8 @@ Reload your DMS tab and open **Labeling**. Search for a part, expand a clip such
 5. **Stop** cancels background downloads but keeps completed images. Click **auto_load_img** again to fill the missing images for the part currently open and its next unfinished part. Failed downloads are retried on restart.
 
 Compressed images are stored in the browser's local IndexedDB storage, not kept as thousands of decoded bitmaps in RAM. Normal navigation reuses these images and decodes only what the viewer needs. `A` / `D` also prepare up to three nearby frames.
+
+`Space` playback reuses an index of the frame list for navigation and lookahead. Moving to another frame updates only the previous/current sidebar rows, instead of rescanning every row and refreshing every clip. Changing the filter, label, session, or frame list rebuilds the index. This reduces interface work even when all images are already downloaded.
 
 The loader allows up to three background requests per tab, with no fixed images-per-second limit. Actual speed depends on the server and connection. It pauses starting background requests while the viewer is fetching frames or saving frame status; requests already in progress may continue. Multiple users or tabs add to the server's load.
 
@@ -109,7 +111,7 @@ Use these on the labeling canvas, outside text fields. On macOS, `Cmd+B`, `Cmd+C
 | `R` / `Delete` / `Backspace` | Delete the selected bounding box(es). `R` does nothing without a selection; hold-to-repeat is disabled for `R`. |
 | `X` / `Shift+X` | Body/hand/eye: delete all boxes / delete all and move to the next frame. |
 | `1` / `2` | Body/hand/eye: delete the leftmost / rightmost box. |
-| `C` / `Shift+C` | Body/hand/eye: copy all boxes from the previously viewed frame / copy and move to the next frame. |
+| `C` / `Shift+C` | Body/hand/eye: replace current boxes with all boxes from the nearest earlier frame of the same label that has boxes, skipping empty frames / copy and move to the next frame. |
 | `Ctrl+C` / `Ctrl+V` | Body/hand/eye: copy / paste the selected box, or all boxes when none is selected. |
 | `Z` | Undo the latest edge adjustment or its whole bulk batch for any bbox label. Body/hand/eye also support undo for the other bbox operations. |
 | Double-click an edge handle, then drag | All bbox labels: adjust the top, bottom, left, or right edge; use `Ctrl+B` to repeat its position across frames. |
