@@ -1,6 +1,6 @@
 # NOTA Labeling Organizer — usage guide
 
-**Version 1.6.24 · English**
+**Version 1.6.25 · English**
 
 For installation screenshots and the complete shortcut tables, see the [GitHub README](https://github.com/tanmainhat0502/dms_annotation_extension#readme).
 
@@ -12,6 +12,8 @@ For installation screenshots and the complete shortcut tables, see the [GitHub R
 4. Expand a clip (`#01`, `#02`, etc.) and open a frame.
 
 `A` / `D` navigate the visible list; `Shift+A` / `Shift+D` move 10 frames. `Space` plays that same list and stops at its end. Clearing the search with `Esc` or `×` restores all parts.
+
+To prevent accidental jumps, click the **padlock to the right of the bottom timeline**. A closed, gold lock blocks clicks and drags on the timeline; the progress display, `A` / `D`, `Space`, and sidebar frame selection still work. Click the lock again to allow timeline navigation. The timeline starts unlocked and remembers your choice after a page reload.
 
 Each clip has **Done**, **Not checked**, and **In progress** buttons that set the entire clip's status. A checkpoint marks the last edited frame. The list preserves its scroll position during edits and brings newly opened frames into view.
 

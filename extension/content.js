@@ -1,10 +1,11 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.6.24";
+  const VERSION = "1.6.25";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";
+  const TIMELINE_LOCK_KEY = "nota-labeling-organizer-timeline-lock-v1";
   const ALLOWED_ORIGINS = new Set([
     "https://ntt.dev.nota.ai",
     "http://10.169.1.102:8765"
@@ -34,6 +35,7 @@
     pane: null,
     toolbar: null,
     toolbarObserver: null,
+    timeline: null,
     input: null,
     status: null,
     empty: null,
@@ -112,6 +114,71 @@
     }
   }
 
+  function ensureTimelineLock() {
+    const bar = document.getElementById("bar");
+    if (!bar || !bar.parentElement || state.timeline?.bar === bar) return;
+    const row = document.createElement("div");
+    row.id = "nl-timeline-controls";
+    const button = document.createElement("button");
+    button.id = "nl-timeline-lock";
+    button.type = "button";
+    button.setAttribute("aria-label", "Timeline lock");
+    button.setAttribute("aria-controls", "bar");
+    button.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none"
+      stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path class="nl-lock-shackle"/><rect x="5" y="10" width="14" height="11" rx="2"/>
+      <path d="M12 14v3"/></svg>`;
+    let locked = false;
+    try { locked = localStorage.getItem(TIMELINE_LOCK_KEY) === "1"; } catch (_) {}
+    const update = () => {
+      button.setAttribute("aria-pressed", String(locked));
+      button.title = locked
+        ? "Timeline locked: click to unlock. A / D / Space still work."
+        : "Timeline unlocked: click to lock and prevent accidental frame jumps.";
+      button.querySelector(".nl-lock-shackle").setAttribute("d", locked
+        ? "M7 10V7a5 5 0 0 1 10 0v3" : "M7 10V7a5 5 0 0 1 9.6-2");
+      bar.classList.toggle("nl-timeline-locked", locked);
+    };
+    button.addEventListener("click", (event) => {
+      locked = !locked;
+      try { localStorage.setItem(TIMELINE_LOCK_KEY, locked ? "1" : "0"); } catch (_) {}
+      update();
+      // Return mouse users to the viewer shortcuts; preserve keyboard focus.
+      if (event.detail > 0) button.blur();
+    });
+    button.addEventListener("keydown", (event) => {
+      if (event.code === "Space" || event.code === "Enter") event.stopPropagation();
+    });
+    const blockSeek = (event) => {
+      if (!locked) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    };
+    // Capture before the native canvas click handler. Block gesture starts,
+    // but let global mouseup handlers finish an annotation drag over the bar.
+    for (const type of ["click", "dblclick", "auxclick", "mousedown", "pointerdown", "touchstart", "dragstart"]) {
+      bar.addEventListener(type, blockSeek, { capture: true, passive: false });
+    }
+    bar.before(row);
+    row.append(bar, button);
+    const syncVisibility = () => { row.hidden = bar.hidden; };
+    const visibilityObserver = new MutationObserver(syncVisibility);
+    visibilityObserver.observe(bar, { attributes: true, attributeFilter: ["hidden"] });
+    // The button takes a small amount of width. Redraw at the new canvas size
+    // on installation and whenever the viewer/sidebar width changes.
+    let redrawFrame = 0;
+    const sizeObserver = new ResizeObserver(() => {
+      cancelAnimationFrame(redrawFrame);
+      redrawFrame = requestAnimationFrame(() => {
+        if (bar.isConnected && !row.hidden && typeof drawBar === "function") drawBar();
+      });
+    });
+    sizeObserver.observe(bar);
+    state.timeline = { bar, row, button, visibilityObserver, sizeObserver };
+    update();
+    syncVisibility();
+  }
+
   function normalize(value) {
     return String(value || "")
       .normalize("NFD")
@@ -132,6 +199,22 @@
     const style = document.createElement("style");
     style.id = STYLE_ID;
     style.textContent = `
+      #nl-timeline-controls {
+        display: flex; align-items: center; gap: 6px;
+        flex: none; min-width: 0; height: 44px;
+      }
+      #nl-timeline-controls[hidden] { display: none !important; }
+      #nl-timeline-controls > #bar { flex: 1 1 0; width: 0; min-width: 0; height: 44px; }
+      #bar.nl-timeline-locked { cursor: not-allowed; touch-action: none; }
+      #nl-timeline-lock {
+        display: inline-flex; align-items: center; justify-content: center;
+        flex: 0 0 32px; width: 32px; height: 32px; box-sizing: border-box; padding: 4px;
+        border: 1px solid var(--line, #353b45); border-radius: 4px;
+        background: var(--panel, #1d2128); color: var(--dim, #aab2bf); cursor: pointer;
+      }
+      #nl-timeline-lock:hover { border-color: var(--accent, #69b8ff); }
+      #nl-timeline-lock:focus-visible { outline: 2px solid var(--accent, #69b8ff); outline-offset: 2px; }
+      #nl-timeline-lock[aria-pressed="true"] { color: #ffd278; border-color: #a98136; background: #352d1e; }
       #${ROOT_ID} {
         display: flex;
         flex-shrink: 0;
@@ -4322,6 +4405,7 @@
   function enhance() {
     state.scheduled = false;
     if (!state.list || !state.list.isConnected) return;
+    ensureTimelineLock();
 
     if (!isLabelingMode()) {
       state.sidebarScope = null;
@@ -4376,6 +4460,7 @@
     if (!state.pane || !state.list || document.getElementById(ROOT_ID)) return false;
 
     injectStyle();
+    ensureTimelineLock();
     state.toolbar = buildToolbar();
     state.list.before(state.toolbar);
     // The image-loading controls can wrap or appear after the toolbar mounts.

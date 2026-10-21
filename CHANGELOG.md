@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.25 - 2026-10-21
+
+- Add a padlock beside the bottom timeline to prevent accidental frame jumps from clicks or drags. Keep keyboard navigation, playback, and sidebar frame selection available while locked.
+- Remember the lock choice across page reloads. Keep the button beside the timeline on resize and hide it when the native timeline is hidden.
+- Add browser checks for mouse/touch/pen input, normal navigation, persistence, layout, and storage failures; update the English guides.
+
 ## 1.6.24 - 2026-10-21
 
 - Extend top, bottom, left, and right edge adjustment from body to all 13 bbox labels. Double-click a midpoint handle, then drag the chosen edge.
