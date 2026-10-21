@@ -1,16 +1,18 @@
-# Manual testing: 1.6.22
+# Manual testing: 1.6.23
 
-Use this checklist to verify bbox shortcuts, sticky clip controls, and image preloading in your DMS environment.
+Use this checklist to verify bbox creation/shortcuts, sticky clip controls, and image preloading in your DMS environment.
 
 ## Install
 
-1. Extract `dist/NOTA_Labeling_Organizer_Extension_v1.6.22.zip`, or use this repository's `extension` folder.
+1. Extract `dist/NOTA_Labeling_Organizer_Extension_v1.6.23.zip`, or use this repository's `extension` folder.
 2. In `chrome://extensions`, disable the older Organizer version. Click **Load unpacked** and select the folder containing `manifest.json`.
 3. Reload the DMS tab. Open **Labeling**, choose a label, and open a frame.
 4. Find **auto_load_img** and **Stop** directly below the part search field.
 
 ## Review checklist
 
+- Press `N`, click inside the image, then click the black margin below it. The box should save with its bottom edge at the image boundary. Repeat for all edges/corners and while zoomed or panned.
+- Start the box in the black margin and finish inside the image. The first corner should snap to the edge. Two corners entirely outside the same edge must not save an empty box; move inside and click again, or cancel with `Esc`.
 - On an editable bbox frame, select one or more boxes intended for removal and press `R`. Only the selected boxes should be deleted, just like Delete. Check that Delete/Backspace still work, and that R without a selection changes nothing.
 - Hold `R`, type `r` in the part search box, and try `R` on a Done frame. There should be no repeated or unintended deletion. On seatbelt, `R` should still accept the ready SAM3 preview.
 - Expand a long clip and scroll down through its frames. Its header (toggle, clip number, and status buttons) should stay directly below the search/image-loading toolbar.
@@ -39,6 +41,7 @@ python tests/test_preload.py
 python tests/test_bbox_copy.py
 python tests/test_sidebar_scroll.py
 python tests/test_bbox_shortcuts.py
+python tests/test_bbox_boundary.py
 ```
 
 The image-loading tests use delayed local responses, actual IndexedDB and Chromium image decoding. They cover request limits, cache hits, Stop/resume, part transitions, failed optimistic Done saves, scope changes, failed image retries, quota errors, and integration with the Organizer. When the saved local DMS source is available, the integration check uses its original `getFrame` and `show` implementations.

@@ -1,6 +1,6 @@
 # NOTA Labeling Organizer — usage guide
 
-**Version 1.6.22 · English**
+**Version 1.6.23 · English**
 
 For installation screenshots and the complete shortcut tables, see the [GitHub README](https://github.com/tanmainhat0502/dms_annotation_extension#readme).
 
@@ -51,7 +51,7 @@ For body/hand/eye boxes, `V` marks targets and the dialog offers **Marked frames
 
 Supported labels: body, head, face, nose, mouth, eye, hand, cigarette, e-cigarette, phone, can, bottle, and mask. Face 7pt also supports copying its full point groups.
 
-- **Create:** press `N`, click the first corner, then click the opposite corner.
+- **Create:** press `N`, click the first corner, then click the opposite corner. Either click can be in the black margin around the image: the preview and saved box snap to the image edge, including while zoomed. A box must have enough width and height inside the image to be saved.
 - **Delete selected boxes:** select one or more boxes, then press `R`, `Delete`, or `Backspace`. `R` uses the same selection and save behavior as Delete; it does nothing without a selection and does not repeat when held. On seatbelt, `R` still accepts the SAM3 preview.
 - **Delete a region:** press `M`, draw a polygon, then click its first point or right-click to delete boxes inside it. The red region stays available for `Ctrl+B`; `Esc` clears it.
 - **Copy one:** select a box or create one, then use `Ctrl+B` with **Selected box only** or **Newly added box only**. Matching target boxes are replaced, duplicates collapsed, and unrelated boxes preserved. A missing match adds a new box.

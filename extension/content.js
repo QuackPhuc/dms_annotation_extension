@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.6.22";
+  const VERSION = "1.6.23";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";
@@ -2170,6 +2170,10 @@
       (event.clientX - rect.left) * canvas.width / rect.width,
       (event.clientY - rect.top) * canvas.height / rect.height
     ];
+    const clampedCanvasPoint = [
+      Math.max(0, Math.min(canvas.width, canvasPoint[0])),
+      Math.max(0, Math.min(canvas.height, canvasPoint[1]))
+    ];
     const rawSourcePoint = [
       (event.clientX - rect.left) * sourceWidth / rect.width,
       (event.clientY - rect.top) * sourceHeight / rect.height
@@ -2178,7 +2182,7 @@
       Math.max(0, Math.min(sourceWidth, rawSourcePoint[0])),
       Math.max(0, Math.min(sourceHeight, rawSourcePoint[1]))
     ];
-    return { canvas, rect, canvasPoint, rawSourcePoint, sourcePoint, sourceWidth, sourceHeight };
+    return { canvas, rect, canvasPoint, clampedCanvasPoint, rawSourcePoint, sourcePoint, sourceWidth, sourceHeight };
   }
 
   function discardBboxCreateDraft() {
@@ -2236,11 +2240,11 @@
         draft.label !== S.labelSel || !ED.items?.includes(draft.item)) return false;
     const point = bboxEventPoint(event);
     const [x0, y0] = draft.startSource;
-    const [x1, y1] = point.rawSourcePoint;
+    const [x1, y1] = point.sourcePoint;
     draft.currentSource = [x1, y1];
-    draft.currentCanvas = point.canvasPoint.slice();
+    draft.currentCanvas = point.clampedCanvasPoint.slice();
     draft.item.box = [Math.min(x0, x1), Math.min(y0, y1), Math.max(x0, x1), Math.max(y0, y1)];
-    ED.mouse = point.canvasPoint.slice();
+    ED.mouse = point.clampedCanvasPoint.slice();
     if (typeof edRepaint === "function") edRepaint();
     return true;
   }
@@ -2254,15 +2258,8 @@
       notify("Box too small · move the pointer farther away and click again");
       return true;
     }
-    const width = Number(S.sess?.src_w) || 0;
-    const height = Number(S.sess?.src_h) || 0;
-    const [x1, y1, x2, y2] = draft.item.box;
-    draft.item.box = [
-      Math.max(0, Math.min(width, x1)),
-      Math.max(0, Math.min(height, y1)),
-      Math.max(0, Math.min(width, x2)),
-      Math.max(0, Math.min(height, y2))
-    ];
+    // Both corners are already clipped. Validate their visible size above,
+    // so two clicks outside the same edge cannot save a zero-area box.
     if (quickBboxReady()) {
       rememberBboxUndo([{
         g: Number(S.shownG),
@@ -2373,7 +2370,9 @@
       if (typeof edRepaint === "function") edRepaint();
       return;
     }
-    if (!onCanvas) return;
+    // The black margin belongs to the drawing surface too. Keep clicks on
+    // actual viewer controls and the sidebar out of the create action.
+    if (!onCanvas && !(state.bboxMode === "create" && event.target === bboxStage)) return;
     if (state.bboxMode === "create") {
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -2398,8 +2397,8 @@
         item,
         startSource: point.sourcePoint.slice(),
         currentSource: point.sourcePoint.slice(),
-        startCanvas: point.canvasPoint.slice(),
-        currentCanvas: point.canvasPoint.slice()
+        startCanvas: point.clampedCanvasPoint.slice(),
+        currentCanvas: point.clampedCanvasPoint.slice()
       };
       if (typeof edRepaint === "function") edRepaint();
       notify("First corner placed · move the pointer and click to finish the box");

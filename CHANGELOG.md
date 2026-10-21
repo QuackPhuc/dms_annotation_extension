@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.23 - 2026-10-21
+
+- Allow either corner of a new bbox to be clicked in the black margin around the image. Clamp the preview and saved box to the image edges, including while zoomed or panned.
+- Validate the clipped box size so clicks entirely outside one edge cannot save a zero-area box. Viewer controls and sidebar clicks do not finish the draft.
+- Add browser checks for all bbox labels, edges/corners, zoom, resolution changes, cancellation, Done locks, and undo.
+
 ## 1.6.22 - 2026-10-20
 
 - Add `R` as an alias for the native Delete action on all bounding-box labels, including multiple selected boxes.
