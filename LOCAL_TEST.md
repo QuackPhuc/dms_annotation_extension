@@ -1,16 +1,19 @@
-# Manual testing: 1.6.23
+# Manual testing: 1.6.24
 
-Use this checklist to verify bbox creation/shortcuts, sticky clip controls, and image preloading in your DMS environment.
+Use this checklist to verify bbox edge adjustment, creation/shortcuts, sticky clip controls, and image preloading in your DMS environment.
 
 ## Install
 
-1. Extract `dist/NOTA_Labeling_Organizer_Extension_v1.6.23.zip`, or use this repository's `extension` folder.
+1. Extract `dist/NOTA_Labeling_Organizer_Extension_v1.6.24.zip`, or use this repository's `extension` folder.
 2. In `chrome://extensions`, disable the older Organizer version. Click **Load unpacked** and select the folder containing `manifest.json`.
 3. Reload the DMS tab. Open **Labeling**, choose a label, and open a frame.
 4. Find **auto_load_img** and **Stop** directly below the part search field.
 
 ## Review checklist
 
+- For head, face, nose, mouth, hand, eye, body, cigarette, e-cigarette, phone, can, bottle, and mask: double-click the midpoint handle of a box's top edge, then drag. Repeat for bottom, left, and right. Only the chosen edge should change. Check while zoomed/panned and near the image boundary.
+- After adjusting an edge, press `Ctrl+B`. The title must show the correct edge and label. Apply to a few next/previous frames, then try `end`: matching boxes should receive the chosen edge position, keep their other three edges, preserve object classes and unrelated boxes, and skip Done frames. No match should add the edited source box.
+- Press `Z` after the batch: all target boxes should return to their previous coordinates. Press `Z` again to undo the source edge adjustment. Switching frame, label, or session must not reuse a previous edge operation.
 - Press `N`, click inside the image, then click the black margin below it. The box should save with its bottom edge at the image boundary. Repeat for all edges/corners and while zoomed or panned.
 - Start the box in the black margin and finish inside the image. The first corner should snap to the edge. Two corners entirely outside the same edge must not save an empty box; move inside and click again, or cancel with `Esc`.
 - On an editable bbox frame, select one or more boxes intended for removal and press `R`. Only the selected boxes should be deleted, just like Delete. Check that Delete/Backspace still work, and that R without a selection changes nothing.
@@ -42,8 +45,11 @@ python tests/test_bbox_copy.py
 python tests/test_sidebar_scroll.py
 python tests/test_bbox_shortcuts.py
 python tests/test_bbox_boundary.py
+python tests/test_bbox_edges.py
 ```
 
 The image-loading tests use delayed local responses, actual IndexedDB and Chromium image decoding. They cover request limits, cache hits, Stop/resume, part transitions, failed optimistic Done saves, scope changes, failed image retries, quota errors, and integration with the Organizer. When the saved local DMS source is available, the integration check uses its original `getFrame` and `show` implementations.
 
 The sidebar tests use long clips and local status-save responses. They check header position after collapse, successful/failed pending saves, native-style repaints and list rebuilds, keyboard toggles, frame navigation, and closing near the end of the list.
+
+The edge tests exercise all 13 bbox labels and all four edges through mouse gestures, the Ctrl+B dialog, local save responses, and Z undo. They verify unchanged target edges/boxes/classes, Done/clip limits, missing-box creation, zoom/pan, and label/session/frame scope. If the saved DMS source is available, the tests use its original hit testing and mouse handlers.

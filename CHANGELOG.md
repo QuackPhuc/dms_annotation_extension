@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.6.24 - 2026-10-21
+
+- Extend top, bottom, left, and right edge adjustment from body to all 13 bbox labels. Double-click a midpoint handle, then drag the chosen edge.
+- Make Ctrl+B repeat that edge's exact position for every bbox label, with the correct label in the dialog. Preserve the other three target edges, matching rules, object classes, and Done-frame skipping.
+- Add Z undo for these edge edits and their whole bulk batches. Keep pending edge operations scoped to their frame, label, and session.
+- Add browser regression checks for all labels/edges, bulk saves, undo, missing boxes, zoom, and scope guards; update the English guides.
+
 ## 1.6.23 - 2026-10-21
 
 - Allow either corner of a new bbox to be clicked in the black margin around the image. Clamp the preview and saved box to the image edges, including while zoomed or panned.

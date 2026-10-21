@@ -1,6 +1,6 @@
 # NOTA Labeling Organizer — usage guide
 
-**Version 1.6.23 · English**
+**Version 1.6.24 · English**
 
 For installation screenshots and the complete shortcut tables, see the [GitHub README](https://github.com/tanmainhat0502/dms_annotation_extension#readme).
 
@@ -67,9 +67,13 @@ Dragging or resizing outside the image is allowed. On release, the outside porti
 
 `Ctrl+C` / `Ctrl+V` copy and paste between nonadjacent frames (`Cmd` also works). A selected box uses geometry matching; copying all boxes replaces the target list. `V` marks frames, `Ctrl+B` repeats the latest operation, and `Z` undoes it. One `Z` restores an entire bbox batch.
 
-### Body edge adjustment
+### Edge adjustment for every bbox label
 
-Double-click the handle in the middle of an edge, then drag it. The original edge is white and the new edge is blue. `Ctrl+B` finds the matching box in each target frame and sets that edge to the blue line's **absolute position**, keeping the other three target edges. If no matching box exists, it adds the edited source box and keeps other boxes.
+For all 13 bbox labels listed above, double-click the middle handle of the **top, bottom, left, or right** edge, then drag it. The original edge is white and the edited edge is green. Only the chosen edge changes; it stays inside the image.
+
+Press `Ctrl+B`, choose previous or next frames, and enter a count or `end`. The matching box in each target frame receives that edge's **absolute position**, keeping its other three edges. If no match exists, the edited source box is added. Other boxes stay; Done frames are skipped. The dialog shows the active label and edge.
+
+Press `Z` to undo the whole batch, then `Z` again to undo the source edge edit. This edge workflow applies to bounding boxes; face 7pt, eye 15pt, and seatbelt keep their own editing tools.
 
 ## Seatbelt masks
 

@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.6.23";
+  const VERSION = "1.6.24";
   const ROOT_ID = "nota-labeling-organizer-v1";
   const STYLE_ID = "nota-labeling-organizer-style-v1";
   const STORAGE_KEY = "nota-labeling-organizer-filter-v1";
@@ -86,7 +86,7 @@
     quickFrameCurrent: null,
     quickFramePrevious: null,
     quickLastOperation: null,
-    bodyEdgePatch: null,
+    bboxEdgePatch: null,
     renderingSidebar: false,
     sidebarScope: null,
     regionScope: null,
@@ -702,7 +702,7 @@
       }
       drawBboxDeletePolygon();
       drawBboxOverlapWarnings();
-      drawBodyEdgePatch();
+      drawBboxEdgePatch();
       return result;
     };
     state.labelVisibilityInstalled = true;
@@ -1816,7 +1816,8 @@
   }
 
   function quickOperationMatches(operation = state.quickLastOperation) {
-    return Boolean(operation && quickBboxReady() && operation.generation === S.gen &&
+    return Boolean(operation && (operation.type === "edge" ? bboxLabelingReady() : quickBboxReady()) &&
+      operation.generation === S.gen && operation.session === S.sess &&
       operation.label === S.labelSel && Number(operation.source ?? operation.g) === Number(S.shownG));
   }
 
@@ -1840,7 +1841,7 @@
   }
 
   function rememberBboxUndo(frames, remote = false) {
-    if (!quickBboxReady() || !frames?.length) return;
+    if (!bboxLabelingReady() || !frames?.length) return;
     state.bboxUndo.push({
       generation: S.gen,
       session: S.sess,
@@ -1859,7 +1860,7 @@
     if (typeof edClearSel === "function") edClearSel();
     else { ED.sel = -1; ED.selSet?.clear(); }
     state.lastCreatedBox = null;
-    state.bodyEdgePatch = null;
+    state.bboxEdgePatch = null;
     if (operation) state.quickLastOperation = {
       ...operation,
       generation: S.gen,
@@ -1964,7 +1965,7 @@
   }
 
   async function undoQuickBbox() {
-    if (state.operationBusy || !quickBboxReady()) return;
+    if (state.operationBusy || !bboxLabelingReady()) return;
     let index = state.bboxUndo.length - 1;
     while (index >= 0) {
       const entry = state.bboxUndo[index];
@@ -1991,7 +1992,7 @@
         saveFrameGenericItems(frame.g, entry.label, frame.items, entry.generation), null, 4);
       if (result.error) throw result.error;
       state.quickLastOperation = null;
-      state.bodyEdgePatch = null;
+      state.bboxEdgePatch = null;
       if (typeof fsRender === "function") fsRender();
       if (typeof edRepaint === "function") edRepaint();
       notify(`Undid ${entry.frames.length > 1 ? `the entire batch of ${entry.frames.length} frames` : "the latest operation"}`);
@@ -2003,13 +2004,14 @@
     }
   }
 
-  function bodyEdgeGeometry(event) {
-    if (!pageLabelingReady("body") || !bboxEditingAvailable() || !ED.items.length) return null;
+  function bboxEdgeGeometry(event) {
+    if (!bboxEditingAvailable() || !ED.items.length || ED.lab !== S.labelSel ||
+        ED.key !== rvKey(S.shownG)) return null;
     const point = bboxEventPoint(event);
     const tolerance = 13 * point.sourceWidth / point.rect.width;
     let best = null;
     ED.items.forEach((item, itemIndex) => {
-      if (!Array.isArray(item?.box)) return;
+      if (!Array.isArray(item?.box) || item.box.length !== 4 || !item.box.every(Number.isFinite)) return;
       const [x1, y1, x2, y2] = item.box.map(Number);
       const handles = [
         { edge: "top", coord: 1, point: [(x1 + x2) / 2, y1] },
@@ -2018,7 +2020,7 @@
         { edge: "left", coord: 0, point: [x1, (y1 + y2) / 2] }
       ];
       for (const handle of handles) {
-        const distance = Math.hypot(point.sourcePoint[0] - handle.point[0], point.sourcePoint[1] - handle.point[1]);
+        const distance = Math.hypot(point.rawSourcePoint[0] - handle.point[0], point.rawSourcePoint[1] - handle.point[1]);
         if (distance <= tolerance && (!best || distance < best.distance)) {
           best = { ...handle, itemIndex, distance, box: item.box.slice() };
         }
@@ -2027,16 +2029,19 @@
     return best;
   }
 
-  function onBodyEdgeDoubleClick(event) {
-    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
-    const geometry = bodyEdgeGeometry(event);
+  function onBboxEdgeDoubleClick(event) {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey ||
+        state.bboxMode || state.operationBusy || anyBulkDialogOpen() ||
+        (typeof RV_OPEN !== "undefined" && RV_OPEN) ||
+        (event.target !== document.getElementById("view") && event.target !== document.getElementById("stage"))) return;
+    const geometry = bboxEdgeGeometry(event);
     if (!geometry) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    state.bodyEdgePatch = {
+    state.bboxEdgePatch = {
       generation: S.gen,
       session: S.sess,
-      label: "body",
+      label: S.labelSel,
       g: Number(S.shownG),
       key: ED.key,
       itemIndex: geometry.itemIndex,
@@ -2049,13 +2054,20 @@
     ED.sel = geometry.itemIndex;
     ED.selSet?.clear();
     if (typeof edRepaint === "function") edRepaint();
-    notify(`Selected the blue ${geometry.edge} edge · drag it, then press Ctrl+B`);
+    notify(`Selected the ${S.labelSel} ${geometry.edge} edge · drag it, then press Ctrl+B`);
   }
 
-  function finalizeBodyEdgePatch() {
-    const patch = state.bodyEdgePatch;
-    if (!patch || patch.generation !== S.gen || patch.key !== ED?.key || patch.g !== Number(S.shownG) ||
-        !Array.isArray(ED.items?.[patch.itemIndex]?.box) || !ED.drag || ED.drag.n !== patch.itemIndex) return;
+  function bboxEdgePatchMatches(patch = state.bboxEdgePatch) {
+    return Boolean(patch && bboxLabelingReady() && typeof ED !== "undefined" &&
+      patch.generation === S.gen && patch.session === S.sess && patch.label === S.labelSel &&
+      ED.lab === patch.label && patch.key === ED.key && ED.key === rvKey(S.shownG) &&
+      patch.g === Number(S.shownG) && Array.isArray(ED.items?.[patch.itemIndex]?.box));
+  }
+
+  function finalizeBboxEdgePatch() {
+    const patch = state.bboxEdgePatch;
+    if (!bboxEdgePatchMatches(patch) || !bboxEditingAvailable() || patch.ready ||
+        !ED.drag?.moved || ED.drag.n !== patch.itemIndex) return;
     const box = ED.items[patch.itemIndex].box.slice();
     const beforeItems = cloneGenericItems(ED.items);
     beforeItems[patch.itemIndex].box = patch.originalBox.slice();
@@ -2082,10 +2094,9 @@
     notify(`Set the ${patch.edge} edge to ${next[patch.coord].toFixed(1)} px · Ctrl+B to apply this position`);
   }
 
-  function drawBodyEdgePatch() {
-    const patch = state.bodyEdgePatch;
-    if (!patch || patch.generation !== S.gen || patch.key !== ED?.key || patch.g !== Number(S.shownG) ||
-        !Array.isArray(ED.items?.[patch.itemIndex]?.box) || typeof ctx === "undefined") return;
+  function drawBboxEdgePatch() {
+    const patch = state.bboxEdgePatch;
+    if (!bboxEdgePatchMatches(patch) || typeof ctx === "undefined") return;
     const canvas = document.getElementById("view");
     const scale = canvas.width / S.sess.src_w;
     const unit = typeof pxK === "function" ? pxK() : canvas.width / canvas.getBoundingClientRect().width;
@@ -2339,8 +2350,8 @@
     if (!bboxLabelingReady() || event.button !== 0) return;
     const bboxCanvas = document.getElementById("view");
     const bboxStage = document.getElementById("stage");
-    if (state.bodyEdgePatch?.ready && (event.target === bboxCanvas || event.target === bboxStage)) {
-      state.bodyEdgePatch = null;
+    if (state.bboxEdgePatch?.ready && (event.target === bboxCanvas || event.target === bboxStage)) {
+      state.bboxEdgePatch = null;
       if (state.quickLastOperation?.type === "edge") state.quickLastOperation = null;
     }
     if (state.bboxMode && !bboxEditingAvailable()) {
@@ -2512,18 +2523,18 @@
     // image. On release, crop the outside portion at the nearest image edge,
     // then let the native editor save the resulting smaller box.
     settleBboxInsideImage();
-    if (quickBboxReady() && ED.drag && !ED.drag.create &&
-        !(state.bodyEdgePatch && !state.bodyEdgePatch.ready && state.bodyEdgePatch.key === ED.key)) {
+    if (bboxLabelingReady() && ED.drag && !ED.drag.create &&
+        !(bboxEdgePatchMatches() && !state.bboxEdgePatch.ready && state.bboxEdgePatch.itemIndex === ED.drag.n)) {
       state.quickLastOperation = null;
     }
     if (quickBboxReady() && ED.drag?.moved && !ED.drag.create && Array.isArray(ED.drag.box0) &&
-        !(state.bodyEdgePatch && state.bodyEdgePatch.key === ED.key &&
-          state.bodyEdgePatch.itemIndex === ED.drag.n)) {
+        !(bboxEdgePatchMatches() && !state.bboxEdgePatch.ready &&
+          state.bboxEdgePatch.itemIndex === ED.drag.n)) {
       const beforeItems = cloneGenericItems(ED.items);
       if (beforeItems[ED.drag.n]) beforeItems[ED.drag.n].box = ED.drag.box0.slice();
       rememberBboxUndo([{ g: Number(S.shownG), items: beforeItems }]);
     }
-    finalizeBodyEdgePatch();
+    finalizeBboxEdgePatch();
     trackCreatedBoxOnMouseUp();
     if (!bboxEditingAvailable() || state.bboxMode || !ED.marq) return;
     const marquee = ED.marq;
@@ -2666,7 +2677,7 @@
     const boxMode = !eyeMode && context.label !== "face_lmk";
     dialog.querySelector("h2").textContent = operation?.type === "delete"
       ? `Delete ${context.labelName} across a clip`
-      : operation?.type === "edge" ? `Adjust the ${operation.edge} body edge` : `Copy ${context.labelName} across a clip`;
+      : operation?.type === "edge" ? `Adjust the ${operation.edge} ${context.labelName} edge` : `Copy ${context.labelName} across a clip`;
     dialog.querySelector(".nl-source-label").textContent = eyeMode ? "Source objects" : "What to copy";
     dialog.querySelector(".nl-source-label").hidden = operationMode;
     dialog.querySelector(".nl-scope").hidden = operationMode;
@@ -3499,13 +3510,15 @@
       }, 4);
       if (typeof fsRender === "function" && S.gen === context.generation) fsRender();
       if (typeof paint === "function" && S.gen === context.generation) paint();
-      if (QUICK_BBOX_LABELS.has(context.label) && undoFrames.length) rememberBboxUndo(undoFrames, true);
+      if ((QUICK_BBOX_LABELS.has(context.label) || operation?.type === "edge") && undoFrames.length) {
+        rememberBboxUndo(undoFrames, true);
+      }
       if (result.error) throw new Error(`saved ${result.completed}/${targets.length}: ${result.error.message}`);
       dialog.close();
       notify(operation?.type === "delete"
         ? `Deleted ${context.labelName} boxes across ${targets.length} frames`
         : operation?.type === "edge"
-          ? `Adjusted the ${operation.edge} body edge across ${targets.length} frames`
+          ? `Adjusted the ${operation.edge} ${context.labelName} edge across ${targets.length} frames`
           : `Copied ${sourceItems.length} ${context.labelName} objects to ${targets.length} frames`);
     } catch (error) {
       preview.classList.add("err");
@@ -4128,7 +4141,7 @@
       return;
     }
     if (event.code === "KeyZ" && !event.altKey && !event.shiftKey && !typing &&
-        !anyBulkDialogOpen() && quickBboxReady()) {
+        !anyBulkDialogOpen() && bboxLabelingReady()) {
       event.preventDefault();
       event.stopImmediatePropagation();
       if (!event.repeat) undoQuickBbox();
@@ -4400,7 +4413,7 @@
     window.addEventListener("mousedown", onBboxMouseDown, true);
     window.addEventListener("mousedown", onManualMouseDown, true);
     window.addEventListener("contextmenu", onViewContextMenu, true);
-    window.addEventListener("dblclick", onBodyEdgeDoubleClick, true);
+    window.addEventListener("dblclick", onBboxEdgeDoubleClick, true);
 
     state.observer = new MutationObserver((mutations) => {
       if (state.applying) return;

@@ -2,7 +2,7 @@
 
 A Chrome extension for faster annotation in **DMS Labeling**. Group frames by clip, edit labels with keyboard shortcuts, and repeat changes across multiple frames.
 
-**Version 1.6.23 · English**
+**Version 1.6.24 · English**
 
 [Download the latest release](https://github.com/tanmainhat0502/dms_annotation_extension/releases/latest) · [Detailed usage guide](extension/README.md) · [Changelog](CHANGELOG.md)
 
@@ -56,7 +56,7 @@ Reload your DMS tab and open **Labeling**. Search for a part, expand a clip such
 | Edit bounding boxes | Press `N` and click two opposite corners to create a box. Use `M` to draw a region that deletes boxes inside it. Boxes dragged outside the image are clipped on release. |
 | Copy annotations | Press `Ctrl+B` to copy boxes, eye 15pt, face 7pt, or seatbelt edits to previous/next frames. Enter a frame count or `end` to reach the clip boundary. |
 | Copy one box | Select a box, then use `Ctrl+B`. Matching target boxes are replaced and duplicates merged; other objects stay. If there is no match, a new box is added. Choosing all boxes replaces the entire target box list. |
-| Adjust a body edge | Double-click an edge handle and drag it. `Ctrl+B` applies that edge's exact position to matching boxes, preserving their other three edges. A missing match adds the edited source box. |
+| Adjust any bbox edge | For every bbox label, double-click the middle handle of the top, bottom, left, or right edge and drag it. `Ctrl+B` applies that edge's exact position to matching boxes, preserving their other three edges. A missing match adds the edited source box. |
 | Edit seatbelt masks | Draw an add polygon with `N`, erase with `M`, or accept a green SAM3 preview with `R`. Bulk edits can use just the latest change or the entire mask. |
 | Transform eye 15pt | Drag inside the dashed box to move the eye, `Ctrl` + drag to rotate, or drag its handles to resize all 15 points. |
 | Review and undo | Mark frames with `V`, repeat bbox operations on marked frames, or reopen selected Done frames. `Z` undoes edits; one bbox undo can restore an entire batch. |
@@ -110,8 +110,8 @@ Use these on the labeling canvas, outside text fields. On macOS, `Cmd+B`, `Cmd+C
 | `1` / `2` | Body/hand/eye: delete the leftmost / rightmost box. |
 | `C` / `Shift+C` | Body/hand/eye: copy all boxes from the previously viewed frame / copy and move to the next frame. |
 | `Ctrl+C` / `Ctrl+V` | Body/hand/eye: copy / paste the selected box, or all boxes when none is selected. |
-| `Z` | Body/hand/eye: undo the latest operation, including a whole bulk batch. |
-| Double-click an edge handle, then drag | Body: adjust one edge; use `Ctrl+B` to repeat its position across frames. |
+| `Z` | Undo the latest edge adjustment or its whole bulk batch for any bbox label. Body/hand/eye also support undo for the other bbox operations. |
+| Double-click an edge handle, then drag | All bbox labels: adjust the top, bottom, left, or right edge; use `Ctrl+B` to repeat its position across frames. |
 
 ### Seatbelt and eye 15pt
 
@@ -153,7 +153,7 @@ Search, grouping, and label visibility change only the interface. Annotation edi
 | `dist/` | Versioned release ZIPs. |
 | `native-updater/` | Windows and macOS updater source. |
 | `scripts/package.ps1` | Package the version from `extension/manifest.json`. |
-| `tests/` | Sidebar scrolling, image preloading, bbox matching, and body edge regression checks. |
+| `tests/` | Sidebar scrolling, image preloading, bbox shortcuts/boundaries, and edge adjustment regression checks. |
 | `.github/workflows/` | Build the macOS updater; publish releases on `vX.Y.Z` tags. |
 
 To release: update the version in `extension/manifest.json` and `extension/content.js`, update the docs/changelog, run `native-updater/build.ps1` if the Windows updater changed, then run `scripts/package.ps1`. Commit and push, then push a matching `vX.Y.Z` tag. GitHub Actions publishes the ZIP with Windows and universal macOS updaters.
